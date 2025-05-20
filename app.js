@@ -36,7 +36,6 @@ app.get("/posts", async (req, res) => {
     .select(
       "posts_post.*",
       "auth_user.username",
-      // "reactions_reaction.owner_id AS reaction_owner",
       "good_reactions.count AS good_count",
       "love_reactions.count AS love_count",
       "crown_reactions.count AS crown_count"
@@ -79,6 +78,19 @@ app.get("/posts", async (req, res) => {
       "crown_reactions.post_id",
       "posts_post.id"
     );
+
+  if (req.query.owner__followed__owner__profile) {
+    query
+      .innerJoin(
+        "followers_follower",
+        "posts_post.owner_id",
+        "followers_follower.followed_id"
+      )
+      .where(
+        "followers_follower.owner_id",
+        req.query.owner__followed__owner__profile
+      );
+  }
 
   if (req.query.reactions__owner__profile) {
     query
