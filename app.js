@@ -33,9 +33,52 @@ app.get("/", (req, res) => {
 
 app.get("/posts", async (req, res) => {
   const query = klient
-    .select("posts_post.*", "auth_user.username")
+    .select(
+      "posts_post.*",
+      "auth_user.username",
+      "reactions_reaction.owner_id AS reaction_owner",
+      "good_reactions.count AS good_count",
+      "love_reactions.count AS love_count",
+      "crown_reactions.count AS crown_count"
+    )
     .from("posts_post")
-    .innerJoin("auth_user", "posts_post.owner_id", "auth_user.id");
+    .innerJoin("auth_user", "posts_post.owner_id", "auth_user.id")
+    .leftOuterJoin(
+      function () {
+        this.select("reactions_reaction.post_id")
+          .count("reactions_reaction.id")
+          .from("reactions_reaction")
+          .where("reactions_reaction.reaction", "GOOD")
+          .groupBy("reactions_reaction.post_id")
+          .as("good_reactions");
+      },
+      "good_reactions.post_id",
+      "posts_post.id"
+    )
+    .leftOuterJoin(
+      function () {
+        this.select("reactions_reaction.post_id")
+          .count("reactions_reaction.id")
+          .from("reactions_reaction")
+          .where("reactions_reaction.reaction", "LOVE")
+          .groupBy("reactions_reaction.post_id")
+          .as("love_reactions");
+      },
+      "love_reactions.post_id",
+      "posts_post.id"
+    )
+    .leftOuterJoin(
+      function () {
+        this.select("reactions_reaction.post_id")
+          .count("reactions_reaction.id")
+          .from("reactions_reaction")
+          .where("reactions_reaction.reaction", "CROWN")
+          .groupBy("reactions_reaction.post_id")
+          .as("crown_reactions");
+      },
+      "crown_reactions.post_id",
+      "posts_post.id"
+    );
 
   if (req.query.category) {
     query.where("posts_post.category", req.query.category);
@@ -51,6 +94,9 @@ app.get("/posts", async (req, res) => {
       this.orWhereILike("posts_post.content", `%${req.query.search}%`);
       this.orWhereILike("auth_user.username", `%${req.query.search}%`);
     });
+  }
+
+  if (req.query.reactions__owner__profile) {
   }
 
   const pageSize = 10;
