@@ -38,7 +38,17 @@ app.get("/posts", async (req, res) => {
     query.where("posts_post.category", req.query.category);
   }
 
-  query.orderBy("posts_post.created_on", "desc");
+  if (req.query.owner__profile) {
+    query.where("posts_post.owner_id", req.query.owner__profile);
+  }
+
+  const pageSize = 10;
+  const page = req.query.page ?? 1;
+  // ^ the ?? operator "returns its right-hand side operand when its left-hand side operand is null or undefined, and otherwise returns its left-hand side operand."
+  query
+    .orderBy("posts_post.created_on", "desc")
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
 
   // Debug: .toSQL().toNative()
   const posts = await query;
