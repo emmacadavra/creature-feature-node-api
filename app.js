@@ -36,7 +36,7 @@ app.get("/posts", async (req, res) => {
     .select(
       "posts_post.*",
       "auth_user.username",
-      "reactions_reaction.owner_id AS reaction_owner",
+      // "reactions_reaction.owner_id AS reaction_owner",
       "good_reactions.count AS good_count",
       "love_reactions.count AS love_count",
       "crown_reactions.count AS crown_count"
@@ -80,6 +80,19 @@ app.get("/posts", async (req, res) => {
       "posts_post.id"
     );
 
+  if (req.query.reactions__owner__profile) {
+    query
+      .innerJoin(
+        "reactions_reaction",
+        "posts_post.id",
+        "reactions_reaction.post_id"
+      )
+      .where(
+        "reactions_reaction.owner_id",
+        req.query.reactions__owner__profile
+      );
+  }
+
   if (req.query.category) {
     query.where("posts_post.category", req.query.category);
   }
@@ -96,16 +109,18 @@ app.get("/posts", async (req, res) => {
     });
   }
 
-  if (req.query.reactions__owner__profile) {
-  }
-
   const pageSize = 10;
   const page = req.query.page ?? 1;
   // ^ the ?? operator "returns its right-hand side operand when its left-hand side operand is null or undefined, and otherwise returns its left-hand side operand."
-  query
-    .orderBy("posts_post.created_on", "desc")
-    .limit(pageSize)
-    .offset((page - 1) * pageSize);
+
+  if (req.query.ordering) {
+    query.orderBy("reactions_reaction.created_on", "desc");
+    // hard-coded temporarily as only reactions have a different ordering rule
+  } else {
+    query.orderBy("posts_post.created_on", "desc");
+  }
+
+  query.limit(pageSize).offset((page - 1) * pageSize);
 
   // Debug: .toSQL().toNative()
   const posts = await query;
