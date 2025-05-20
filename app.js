@@ -32,7 +32,10 @@ app.get("/", (req, res) => {
 });
 
 app.get("/posts", async (req, res) => {
-  const query = klient.select("posts_post.*").from("posts_post");
+  const query = klient
+    .select("posts_post.*", "auth_user.username")
+    .from("posts_post")
+    .innerJoin("auth_user", "posts_post.owner_id", "auth_user.id");
 
   if (req.query.category) {
     query.where("posts_post.category", req.query.category);
@@ -40,6 +43,14 @@ app.get("/posts", async (req, res) => {
 
   if (req.query.owner__profile) {
     query.where("posts_post.owner_id", req.query.owner__profile);
+  }
+
+  if (req.query.search) {
+    query.where(function () {
+      this.whereILike("posts_post.title", `%${req.query.search}%`);
+      this.orWhereILike("posts_post.content", `%${req.query.search}%`);
+      this.orWhereILike("auth_user.username", `%${req.query.search}%`);
+    });
   }
 
   const pageSize = 10;
