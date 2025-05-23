@@ -36,12 +36,15 @@ app.get("/posts", async (req, res) => {
     .select(
       "posts_post.*",
       "auth_user.username",
+      "profiles_profile.id AS profile_id",
+      "profiles_profile.image AS profile_image",
       "good_reactions.count AS good_count",
       "love_reactions.count AS love_count",
       "crown_reactions.count AS crown_count"
     )
     .from("posts_post")
     .innerJoin("auth_user", "posts_post.owner_id", "auth_user.id")
+    .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
     .leftOuterJoin(
       function () {
         this.select("reactions_reaction.post_id")
@@ -143,6 +146,22 @@ app.get("/posts", async (req, res) => {
     next: null,
     previous: null,
     results: posts,
+    // results: posts.map((post) => {
+    //   return {
+    //     id: post.id,
+    //     title: post.title,
+    //     content: post.content,
+    //     image: post.image,
+    //     created_on: post.created_on,
+    //     updated_on: post.updated_on,
+    //     owner_id: post.owner_id,
+    //     category: post.category,
+    //     username: post.username,
+    //     good_count: post.good_count,
+    //     love_count: post.love_count,
+    //     crown_count: post.crown_count,
+    //   };
+    // }),
   });
 });
 
