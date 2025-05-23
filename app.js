@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { Client } from "pg";
 import knex from "knex";
+import { v2 as cloudinary } from "cloudinary";
 
 const app = express();
 app.use(
@@ -42,7 +43,7 @@ app.get("/posts", async (req, res) => {
   const query = klient
     .select(
       "posts_post.*",
-      "auth_user.username",
+      "auth_user.username AS post_owner",
       "profiles_profile.id AS profile_id",
       "profiles_profile.image AS profile_image",
       "good_reactions.count AS good_count",
@@ -152,24 +153,37 @@ app.get("/posts", async (req, res) => {
     count: 3,
     next: null,
     previous: null,
-    results: posts,
-    // results: posts.map((post) => {
-    //   return {
-    //     id: post.id,
-    //     title: post.title,
-    //     content: post.content,
-    //     image: post.image,
-    //     created_on: post.created_on,
-    //     updated_on: post.updated_on,
-    //     owner_id: post.owner_id,
-    //     category: post.category,
-    //     username: post.username,
-    //     good_count: post.good_count,
-    //     love_count: post.love_count,
-    //     crown_count: post.crown_count,
-    //   };
-    // }),
+    results: await postsMapper(posts),
   });
 });
+
+const postsMapper = async (posts) => {
+  const postsArray = [];
+
+  for (const post of posts) {
+    const image = await cloudinary.api.resource(post.image.replace("../", ""));
+    const profileImage = await cloudinary.api.resource(
+      post.profile_image.replace("../", "")
+    );
+
+    postsArray.push({
+      id: post.id,
+      title: post.title,
+      content: post.content,
+      image: image.url,
+      created_on: post.created_on,
+      updated_on: post.updated_on,
+      profile_id: post.profile_id,
+      category: post.category,
+      owner: post.post_owner,
+      profile_image: profileImage.url,
+      good_count: post.good_count,
+      love_count: post.love_count,
+      crown_count: post.crown_count,
+    });
+  }
+
+  return postsArray;
+};
 
 app.listen(4000);
