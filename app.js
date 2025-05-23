@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import { Client } from "pg";
 import knex from "knex";
-import { v2 as cloudinary } from "cloudinary";
+import { getCloudinaryImage } from "./api/cloudinary.js";
 
 const app = express();
 app.use(
@@ -161,22 +161,22 @@ const postsMapper = async (posts) => {
   const postsArray = [];
 
   for (const post of posts) {
-    const image = await cloudinary.api.resource(post.image.replace("../", ""));
-    const profileImage = await cloudinary.api.resource(
-      post.profile_image.replace("../", "")
-    );
+    const [postImage, profileImage] = await Promise.all([
+      getCloudinaryImage(post.image),
+      getCloudinaryImage(post.profile_image),
+    ]);
 
     postsArray.push({
       id: post.id,
       title: post.title,
       content: post.content,
-      image: image.url,
+      image: postImage,
       created_on: post.created_on,
       updated_on: post.updated_on,
       profile_id: post.profile_id,
       category: post.category,
       owner: post.post_owner,
-      profile_image: profileImage.url,
+      profile_image: profileImage,
       good_count: post.good_count,
       love_count: post.love_count,
       crown_count: post.crown_count,
