@@ -1,8 +1,15 @@
 import express from "express";
+import cors from "cors";
 import { Client } from "pg";
 import knex from "knex";
 
 const app = express();
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  })
+);
 
 // PG Connection
 const client = new Client({
