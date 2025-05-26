@@ -1,9 +1,15 @@
 import express from "express";
 import cors from "cors";
-import { Client } from "pg";
+import { Client, types } from "pg";
 import knex from "knex";
 import { getCloudinaryImage } from "./api/cloudinary.js";
 
+// Sets BigInt type correctly to Number
+types.setTypeParser(20, (val) => {
+  return parseInt(val, 10);
+});
+
+// Express Connection
 const app = express();
 app.use(
   cors({
@@ -39,6 +45,7 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
+// POSTS (GET)
 app.get("/posts", async (req, res) => {
   const query = klient
     .select(
@@ -48,8 +55,12 @@ app.get("/posts", async (req, res) => {
       "profiles_profile.image AS profile_image",
       "good_reactions.count AS good_count",
       "love_reactions.count AS love_count",
-      "crown_reactions.count AS crown_count"
+      "crown_reactions.count AS crown_count",
+      klient.raw(
+        "COALESCE(love_reactions.count, 0) + COALESCE(good_reactions.count, 0) + COALESCE(crown_reactions.count, 0) AS reactions_count"
+      )
     )
+
     .from("posts_post")
     .innerJoin("auth_user", "posts_post.owner_id", "auth_user.id")
     .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
@@ -168,22 +179,43 @@ const postsMapper = async (posts) => {
 
     postsArray.push({
       id: post.id,
+      owner: post.post_owner,
+      // is_owner: - AUTH
+      profile_id: post.profile_id,
+      profile_image: profileImage,
       title: post.title,
+      // excerpt: - REDUDANT
       content: post.content,
       image: postImage,
-      created_on: post.created_on,
-      updated_on: post.updated_on,
-      profile_id: post.profile_id,
+      // image_filter: "normal", - REDUDANT
       category: post.category,
-      owner: post.post_owner,
-      profile_image: profileImage,
+      // status: "published", - REDUDANT
+      // current_user_reaction: - AUTH
+      reactions_count: post.reactions_count,
+      // comments_count:
+      crown_count: post.crown_count,
       good_count: post.good_count,
       love_count: post.love_count,
-      crown_count: post.crown_count,
+      created_on: post.created_on,
+      updated_on: post.updated_on,
     });
   }
 
   return postsArray;
 };
+
+// REACTIONS (GET)
+// app.get("/reactions", async (req, res) => {
+//   const query = klient
+//     .select(
+//       "reactions_reaction.*",
+//       "posts_post.owner_id AS post_owner_id"
+//     )
+//     .innerJoin("posts_post", "reactions_reaction.post_id", "posts_post.id");
+
+//   if (req.)
+// });
+
+// COMMENTS (GET)
 
 app.listen(4000);
