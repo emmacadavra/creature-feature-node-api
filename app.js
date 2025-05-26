@@ -53,6 +53,7 @@ app.get("/posts", async (req, res) => {
       "auth_user.username AS post_owner",
       "profiles_profile.id AS profile_id",
       "profiles_profile.image AS profile_image",
+      "post_comments.count AS comments_count",
       "good_reactions.count AS good_count",
       "love_reactions.count AS love_count",
       "crown_reactions.count AS crown_count",
@@ -64,6 +65,17 @@ app.get("/posts", async (req, res) => {
     .from("posts_post")
     .innerJoin("auth_user", "posts_post.owner_id", "auth_user.id")
     .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
+    .leftOuterJoin(
+      function () {
+        this.select("comments_comment.post_id")
+          .count("comments_comment.id")
+          .from("comments_comment")
+          .groupBy("comments_comment.post_id")
+          .as("post_comments");
+      },
+      "post_comments.post_id",
+      "posts_post.id"
+    )
     .leftOuterJoin(
       function () {
         this.select("reactions_reaction.post_id")
@@ -192,7 +204,7 @@ const postsMapper = async (posts) => {
       // status: "published", - REDUDANT
       // current_user_reaction: - AUTH
       reactions_count: post.reactions_count,
-      // comments_count:
+      comments_count: post.comments_count,
       crown_count: post.crown_count,
       good_count: post.good_count,
       love_count: post.love_count,
