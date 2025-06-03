@@ -176,11 +176,11 @@ app.get("/posts", async (req, res) => {
     count: 3,
     next: null,
     previous: null,
-    results: await postsMapper(posts),
+    results: await postsMapper(posts, req.query.currentlyLoggedInUser),
   });
 });
 
-const postsMapper = async (posts) => {
+const postsMapper = async (posts, currentlyLoggedInUser) => {
   const postsArray = [];
 
   for (const post of posts) {
@@ -192,17 +192,21 @@ const postsMapper = async (posts) => {
     postsArray.push({
       id: post.id,
       owner: post.post_owner,
-      // is_owner: - AUTH
+      is_owner: Number(currentlyLoggedInUser) === post.profile_id,
       profile_id: post.profile_id,
       profile_image: profileImage,
       title: post.title,
-      // excerpt: - REDUDANT
+      excerpt: null, // REDUDANT
       content: post.content,
       image: postImage,
-      // image_filter: "normal", - REDUDANT
+      image_filter: "normal", // REDUDANT
       category: post.category,
-      // status: "published", - REDUDANT
-      // current_user_reaction: - AUTH
+      status: "published", // REDUDANT
+      // current_user_reaction: - AUTH - OBJECT LOOKS LIKE:
+      //{
+      //     "reaction_id": reaction.id,
+      //     "reaction_type": reaction.reaction
+      // }
       reactions_count: post.reactions_count,
       comments_count: post.comments_count,
       crown_count: post.crown_count,
@@ -215,18 +219,6 @@ const postsMapper = async (posts) => {
 
   return postsArray;
 };
-
-// REACTIONS (GET)
-// app.get("/reactions", async (req, res) => {
-//   const query = klient
-//     .select(
-//       "reactions_reaction.*",
-//       "posts_post.owner_id AS post_owner_id"
-//     )
-//     .innerJoin("posts_post", "reactions_reaction.post_id", "posts_post.id");
-
-//   if (req.)
-// });
 
 // COMMENTS (GET)
 
