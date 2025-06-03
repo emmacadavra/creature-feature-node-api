@@ -221,5 +221,26 @@ const postsMapper = async (posts, currentlyLoggedInUser) => {
 };
 
 // COMMENTS (GET)
+app.get("/comments", async (req, res) => {
+  if (!req.query.post) {
+    throw new Error("Post ID must be provided!");
+  }
+
+  const query = klient
+    .select("comments_comment.*")
+    .from("comments_comment")
+    .where("comments_comment.post_id", req.query.post)
+    .orderBy("comments_comment.created_on", "desc");
+
+  const comments = await query;
+
+  res.send({
+    // hard-coded temporarily to match old API format
+    count: 3,
+    next: null,
+    previous: null,
+    results: comments,
+  });
+});
 
 app.listen(4000);
