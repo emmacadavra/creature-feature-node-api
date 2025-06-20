@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import { types } from "pg";
 import knex from "knex";
-import { getPosts } from "./posts.js";
+import { createPost, getPosts } from "./posts.js";
 import { getComments } from "./comments.js";
 import { getProfiles } from "./profiles.js";
 
@@ -42,6 +42,9 @@ app.get("/", (req, res) => {
 
 // POSTS (GET)
 app.get("/posts", getPosts);
+
+// POSTS (POST)
+app.post("/posts", createPost);
 
 // COMMENTS (GET)
 app.get("/comments", getComments);

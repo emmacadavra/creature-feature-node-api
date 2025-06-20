@@ -1,5 +1,5 @@
-import { getCloudinaryImage } from "./api/cloudinary.js";
 import { klient } from "./app.js";
+import { getCloudinaryImage } from "./api/cloudinary.js";
 
 // GET PROFILES
 export const getProfiles = async (req, res) => {

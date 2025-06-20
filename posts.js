@@ -176,3 +176,34 @@ const postsMapper = async (posts, currentlyLoggedInUser) => {
 
   return postsArray;
 };
+
+// CREATE POST
+export const createPost = async (req, res) => {
+  if (!req.body.title) {
+    throw new Error("Title required!");
+  }
+
+  const postData = {
+    title: req.body.title,
+    content: req.body.content,
+    image: "/default_post_khv8hr", // HARD-CODED DEFAULT
+    image_filter: "normal",
+    created_on: new Date(),
+    updated_on: new Date(),
+    owner_id: req.query.currentlyLoggedInUser,
+    category: req.body.category,
+    status: "published",
+    // excerpt: null
+  };
+
+  const insertResponse = await klient("posts_post").insert(postData, ["id"]);
+
+  const postResponse = await klient
+    .select("posts_post.*")
+    .from("posts_post")
+    .where("posts_post.id", insertResponse[0].id);
+
+  res.send(postResponse);
+};
+
+//
