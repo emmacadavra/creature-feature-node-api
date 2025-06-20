@@ -216,9 +216,40 @@ export const createPost = async (req, res) => {
   ]);
 
   const postResponse = await klient
-    .select("posts_post.*")
+    .select(
+      "posts_post.*",
+      "auth_user.username AS post_owner",
+      "profiles_profile.id AS profile_id",
+      "profiles_profile.image AS profile_image"
+    )
     .from("posts_post")
+    .innerJoin("auth_user", "posts_post.owner_id", "auth_user.id")
+    .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
     .where("posts_post.id", insertResponse[0].id);
 
-  res.send(postResponse);
+  res.send(createPostMapper(postResponse[0]));
+};
+
+// CREATE POSTS MAPPER
+const createPostMapper = (postResponse) => {
+  const post = {
+    id: postResponse.id,
+    owner: postResponse.post_owner,
+    is_owner: true,
+    profile_id: postResponse.profile_id,
+    profile_image:
+      "http://res.cloudinary.com/dw7gzqpa3/image/upload/v1704821985/default_profile_kkmzvb.jpg", // TEMP HARD-CODED
+    title: postResponse.title,
+    content: postResponse.content,
+    image:
+      "http://res.cloudinary.com/dw7gzqpa3/image/upload/v1704821985/default_post_khv8hr.jpg", // TEMP HARD-CODED
+    image_filter: postResponse.image_filter,
+    category: postResponse.category,
+    status: postResponse.status,
+    current_user_reaction: null,
+    created_on: postResponse.created_on,
+    updated_on: postResponse.updated_on,
+  };
+
+  return post;
 };
