@@ -1,5 +1,6 @@
 import { klient } from "./app.js";
 import { getCloudinaryImage } from "./api/cloudinary.js";
+import * as z from "zod/v4";
 
 // GET POSTS
 export const getPosts = async (req, res) => {
@@ -179,14 +180,26 @@ const postsMapper = async (posts, currentlyLoggedInUser) => {
 
 // CREATE POST
 export const createPost = async (req, res) => {
-  if (!req.body.title) {
-    throw new Error("Title required!");
-  }
+  const postSchema = z.object({
+    title: z.string().trim().min(1).max(255),
+    content: z.string().trim(),
+    image: z.string().trim(), // TEMP HARD-CODED
+    image_filter: z.string().trim(),
+    created_on: z.date(),
+    updated_on: z.date(),
+    owner_id: z.coerce.number(),
+    category: z.enum([
+      "Facinorous Fluffballs",
+      "Reptillian Villains",
+      "Feathered Fiends",
+    ]),
+    status: z.string(),
+  });
 
   const postData = {
     title: req.body.title,
     content: req.body.content,
-    image: "/default_post_khv8hr", // HARD-CODED DEFAULT
+    image: "/default_post_khv8hr", // TEMP HARD-CODED DEFAULT
     image_filter: "normal",
     created_on: new Date(),
     updated_on: new Date(),
@@ -196,7 +209,11 @@ export const createPost = async (req, res) => {
     // excerpt: null
   };
 
-  const insertResponse = await klient("posts_post").insert(postData, ["id"]);
+  const validatedData = postSchema.parse(postData);
+
+  const insertResponse = await klient("posts_post").insert(validatedData, [
+    "id",
+  ]);
 
   const postResponse = await klient
     .select("posts_post.*")
@@ -205,5 +222,3 @@ export const createPost = async (req, res) => {
 
   res.send(postResponse);
 };
-
-//
