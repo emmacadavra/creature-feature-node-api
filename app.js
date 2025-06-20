@@ -47,6 +47,6 @@ app.get("/posts", getPosts);
 app.get("/comments", getComments);
 
 // PROFILES (GET)
-app.get("/profiles/:id", getProfiles);
+app.get("/profiles", getProfiles);
 
 app.listen(4000);

@@ -1,15 +1,18 @@
+import { getCloudinaryImage } from "./api/cloudinary.js";
 import { klient } from "./app.js";
 
-// GET PROFILES - CURRENTLY ONLY GETS ONE PROFILE, NOT ALL
+// GET PROFILES
 export const getProfiles = async (req, res) => {
   const query = klient
     .select(
       "profiles_profile.*",
+      "auth_user.username AS profile_owner",
       "user_posts.count AS posts_count",
       "user_followers.count AS followers_count",
       "user_follows.count AS followed_count"
     )
     .from("profiles_profile")
+    .innerJoin("auth_user", "profiles_profile.id", "auth_user.id")
     .leftOuterJoin(
       function () {
         this.select("posts_post.owner_id")
@@ -45,7 +48,39 @@ export const getProfiles = async (req, res) => {
     )
     .orderBy("followers_count", "desc");
 
-  const profile = await query;
+  const profiles = await query;
 
-  res.send(profile);
+  res.send({
+    // hard-coded temporarily to match old API format
+    count: 3,
+    next: null,
+    previous: null,
+    results: await profilesMapper(profiles, req.query.currentlyLoggedInUser),
+  });
+};
+
+// PROFILES MAPPER
+const profilesMapper = async (profiles, currentlyLoggedInUser) => {
+  const profilesArray = [];
+
+  for (const profile of profiles) {
+    const profileImage = await getCloudinaryImage(profile.image);
+
+    profilesArray.push({
+      id: profile.id,
+      owner: profile.profile_owner,
+      is_owner: Number(currentlyLoggedInUser) === profile.id,
+      name: profile.name,
+      content: profile.content,
+      profile_image: profileImage,
+      following_id: null,
+      posts_count: profile.posts_count,
+      followers_count: profile.followers_count,
+      following_count: profile.following_count,
+      created_on: profile.created_on,
+      updated_on: profile.updated_on,
+    });
+  }
+
+  return profilesArray;
 };
