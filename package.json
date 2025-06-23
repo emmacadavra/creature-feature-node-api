@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon app.js"
+    "start": "nodemon --exec \"node -r dotenv/config\" app.js"
   },
   "author": "",
   "license": "ISC",
@@ -13,8 +13,10 @@
   "dependencies": {
     "cloudinary": "^2.6.1",
     "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "knex": "^3.1.0",
+    "multer": "^2.0.1",
     "pg": "^8.15.6",
     "zod": "^3.25.67"
   },
