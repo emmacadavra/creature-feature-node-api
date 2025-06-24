@@ -137,7 +137,7 @@ export const getPosts = async (req, res) => {
   });
 };
 
-// POSTS MAPPER
+// POSTS MAPPER (GET)
 const postsMapper = async (posts, currentlyLoggedInUser) => {
   const postsArray = [];
 
@@ -183,7 +183,7 @@ export const createPost = async (req, res) => {
   const postSchema = z.object({
     title: z.string().trim().min(1).max(255),
     content: z.string().trim(),
-    image: z.string().trim(), // TEMP HARD-CODED
+    image: z.string().trim(),
     image_filter: z.string().trim(),
     created_on: z.date(),
     updated_on: z.date(),
@@ -199,14 +199,14 @@ export const createPost = async (req, res) => {
   const postData = {
     title: req.body.title,
     content: req.body.content,
-    image: "/default_post_khv8hr", // TEMP HARD-CODED DEFAULT
+    image: req.body.image,
     image_filter: "normal",
     created_on: new Date(),
     updated_on: new Date(),
     owner_id: req.query.currentlyLoggedInUser,
     category: req.body.category,
     status: "published",
-    // excerpt: null
+    // excerpt: null // REDUNDANT
   };
 
   const validatedData = postSchema.parse(postData);
@@ -227,22 +227,24 @@ export const createPost = async (req, res) => {
     .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
     .where("posts_post.id", insertResponse[0].id);
 
-  res.send(createPostMapper(postResponse[0]));
+  res.send(await createPostMapper(postResponse[0]));
 };
 
 // CREATE POSTS MAPPER
-const createPostMapper = (postResponse) => {
+const createPostMapper = async (postResponse) => {
+  const [postImage, profileImage] = await Promise.all([
+    getCloudinaryImage(postResponse.image),
+    getCloudinaryImage(postResponse.profile_image),
+  ]);
   const post = {
     id: postResponse.id,
     owner: postResponse.post_owner,
     is_owner: true,
     profile_id: postResponse.profile_id,
-    profile_image:
-      "http://res.cloudinary.com/dw7gzqpa3/image/upload/v1704821985/default_profile_kkmzvb.jpg", // TEMP HARD-CODED
+    profile_image: profileImage,
     title: postResponse.title,
     content: postResponse.content,
-    image:
-      "http://res.cloudinary.com/dw7gzqpa3/image/upload/v1704821985/default_post_khv8hr.jpg", // TEMP HARD-CODED
+    image: postImage,
     image_filter: postResponse.image_filter,
     category: postResponse.category,
     status: postResponse.status,

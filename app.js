@@ -5,6 +5,7 @@ import knex from "knex";
 import { createPost, getPosts } from "./posts.js";
 import { getComments } from "./comments.js";
 import { getProfiles } from "./profiles.js";
+import { uploadFile, uploadImage } from "./image-upload.js";
 
 // Sets BigInt type correctly to Number
 types.setTypeParser(20, (val) => {
@@ -51,5 +52,7 @@ app.get("/comments", getComments);
 
 // PROFILES (GET)
 app.get("/profiles", getProfiles);
+
+app.post("/image-upload", uploadFile, uploadImage);
 
 app.listen(4000);

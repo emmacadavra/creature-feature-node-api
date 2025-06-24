@@ -20,3 +20,5 @@ export const getCloudinaryImage = async (imageName) => {
 export const invalidateCacheKey = (prevImageName) => {
   delete cloudinaryImageCache[prevImageName];
 };
+
+export default cloudinary;
