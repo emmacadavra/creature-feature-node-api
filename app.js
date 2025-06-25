@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import { types } from "pg";
 import knex from "knex";
-import { createPost, getPosts } from "./posts.js";
+import { createPost, editPost, getPosts } from "./posts.js";
 import { getComments } from "./comments.js";
 import { getProfiles } from "./profiles.js";
 import { uploadFile, uploadImage } from "./image-upload.js";
@@ -47,12 +47,16 @@ app.get("/posts", getPosts);
 // POSTS (POST)
 app.post("/posts", createPost);
 
+// POSTS - UPLOAD IMAGE (POST)
+app.post("/image-upload", uploadFile, uploadImage);
+
+// POSTS (PATCH)
+app.patch("/posts/:id", editPost);
+
 // COMMENTS (GET)
 app.get("/comments", getComments);
 
 // PROFILES (GET)
 app.get("/profiles", getProfiles);
-
-app.post("/image-upload", uploadFile, uploadImage);
 
 app.listen(4000);

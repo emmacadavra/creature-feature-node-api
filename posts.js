@@ -183,7 +183,7 @@ export const createPost = async (req, res) => {
   const postSchema = z.object({
     title: z.string().trim().min(1).max(255),
     content: z.string().trim(),
-    image: z.string().trim(),
+    image: z.string().trim().default("default_post_khv8hr"),
     image_filter: z.string().trim(),
     created_on: z.date(),
     updated_on: z.date(),
@@ -227,11 +227,11 @@ export const createPost = async (req, res) => {
     .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
     .where("posts_post.id", insertResponse[0].id);
 
-  res.send(await createPostMapper(postResponse[0]));
+  res.send(await createUpdatePostMapper(postResponse[0]));
 };
 
-// CREATE POSTS MAPPER
-const createPostMapper = async (postResponse) => {
+// CREATE/EDIT POSTS MAPPER
+const createUpdatePostMapper = async (postResponse) => {
   const [postImage, profileImage] = await Promise.all([
     getCloudinaryImage(postResponse.image),
     getCloudinaryImage(postResponse.profile_image),
@@ -254,4 +254,52 @@ const createPostMapper = async (postResponse) => {
   };
 
   return post;
+};
+
+// UPDATE POST
+export const editPost = async (req, res) => {
+  const postSchema = z.object({
+    id: z.number(),
+    title: z.string().trim().min(1).max(255),
+    content: z.string().trim(),
+    image: z.optional(z.string().trim()),
+    updated_on: z.date(),
+    category: z.enum([
+      "Facinorous Fluffballs",
+      "Reptillian Villains",
+      "Feathered Fiends",
+    ]),
+  });
+
+  const postData = {
+    id: Number(req.params.id),
+    title: req.body.title,
+    content: req.body.content,
+    updated_on: new Date(),
+    category: req.body.category,
+  };
+
+  if (req.body.image) {
+    postData.image = req.body.image;
+  }
+
+  const validatedData = postSchema.parse(postData);
+
+  const updatePost = await klient("posts_post")
+    .where({ id: validatedData.id })
+    .update(validatedData, ["id"]);
+
+  const postResponse = await klient
+    .select(
+      "posts_post.*",
+      "auth_user.username AS post_owner",
+      "profiles_profile.id AS profile_id",
+      "profiles_profile.image AS profile_image"
+    )
+    .from("posts_post")
+    .innerJoin("auth_user", "posts_post.owner_id", "auth_user.id")
+    .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
+    .where("posts_post.id", updatePost[0].id);
+
+  res.send(await createUpdatePostMapper(postResponse[0]));
 };

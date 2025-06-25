@@ -72,7 +72,7 @@ const profilesMapper = async (profiles, currentlyLoggedInUser) => {
       is_owner: Number(currentlyLoggedInUser) === profile.id,
       name: profile.name,
       content: profile.content,
-      profile_image: profileImage,
+      image: profileImage,
       following_id: null,
       posts_count: profile.posts_count,
       followers_count: profile.followers_count,
