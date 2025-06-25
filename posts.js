@@ -303,3 +303,11 @@ export const editPost = async (req, res) => {
 
   res.send(await createUpdatePostMapper(postResponse[0]));
 };
+
+export const deletePost = async (req, res) => {
+  const postId = Number(req.params.id);
+
+  await klient("posts_post").where("posts_post.id", postId).del();
+
+  res.sendStatus(200);
+};
