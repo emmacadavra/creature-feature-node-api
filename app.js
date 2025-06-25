@@ -4,7 +4,7 @@ import { types } from "pg";
 import knex from "knex";
 import { createPost, deletePost, editPost, getPosts } from "./posts.js";
 import { getComments } from "./comments.js";
-import { getProfiles } from "./profiles.js";
+import { editProfile, getProfiles } from "./profiles.js";
 import { uploadFile, uploadImage } from "./image-upload.js";
 
 // Sets BigInt type correctly to Number
@@ -41,14 +41,19 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
+// UPLOAD IMAGE - POSTS / PROFILES (POST)
+app.post("/image-upload", uploadFile, uploadImage);
+
+// POSTS ROUTES?
+
+// app.route("/posts").get(getPosts).post(createPost);
+// app.route("/posts/:id").patch(editPost).delete(deletePost);
+
 // POSTS (GET)
 app.get("/posts", getPosts);
 
 // POSTS (POST)
 app.post("/posts", createPost);
-
-// POSTS - UPLOAD IMAGE (POST)
-app.post("/image-upload", uploadFile, uploadImage);
 
 // POSTS (PATCH / UPDATE)
 app.patch("/posts/:id", editPost);
@@ -60,6 +65,9 @@ app.delete("/posts/:id", deletePost);
 app.get("/comments", getComments);
 
 // PROFILES (GET)
-app.get("/profiles", getProfiles);
+app.get("/profiles{/:id}", getProfiles);
+
+// PROFILES (PATCH / UPDATE)
+app.patch("/profiles/:id", editProfile);
 
 app.listen(4000);

@@ -227,11 +227,16 @@ export const createPost = async (req, res) => {
     .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
     .where("posts_post.id", insertResponse[0].id);
 
-  res.send(await createUpdatePostMapper(postResponse[0]));
+  res.send(
+    await createUpdatePostMapper(
+      postResponse[0],
+      req.query.currentlyLoggedInUser
+    )
+  );
 };
 
 // CREATE/EDIT POSTS MAPPER
-const createUpdatePostMapper = async (postResponse) => {
+const createUpdatePostMapper = async (postResponse, currentlyLoggedInUser) => {
   const [postImage, profileImage] = await Promise.all([
     getCloudinaryImage(postResponse.image),
     getCloudinaryImage(postResponse.profile_image),
@@ -239,7 +244,7 @@ const createUpdatePostMapper = async (postResponse) => {
   const post = {
     id: postResponse.id,
     owner: postResponse.post_owner,
-    is_owner: true,
+    is_owner: Number(currentlyLoggedInUser) === postResponse.profile_id,
     profile_id: postResponse.profile_id,
     profile_image: profileImage,
     title: postResponse.title,
@@ -264,6 +269,7 @@ export const editPost = async (req, res) => {
     content: z.string().trim(),
     image: z.optional(z.string().trim()),
     updated_on: z.date(),
+    owner_id: z.coerce.number(),
     category: z.enum([
       "Facinorous Fluffballs",
       "Reptillian Villains",
@@ -276,6 +282,7 @@ export const editPost = async (req, res) => {
     title: req.body.title,
     content: req.body.content,
     updated_on: new Date(),
+    owner_id: req.query.currentlyLoggedInUser,
     category: req.body.category,
   };
 
@@ -301,7 +308,12 @@ export const editPost = async (req, res) => {
     .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
     .where("posts_post.id", updatePost[0].id);
 
-  res.send(await createUpdatePostMapper(postResponse[0]));
+  res.send(
+    await createUpdatePostMapper(
+      postResponse[0],
+      req.query.currentlyLoggedInUser
+    )
+  );
 };
 
 export const deletePost = async (req, res) => {
