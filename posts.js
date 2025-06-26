@@ -10,27 +10,41 @@ export const getPosts = async (req, res) => {
       "auth_user.username AS post_owner",
       "profiles_profile.id AS profile_id",
       "profiles_profile.image AS profile_image",
-      "post_comments.count AS comments_count",
+      "reactions_reaction.id AS reaction_id",
+      "reactions_reaction.reaction AS reaction_type",
+      "reactions_reaction.owner_id AS reaction_owner",
+      "crown_reactions.count AS crown_count",
       "good_reactions.count AS good_count",
       "love_reactions.count AS love_count",
-      "crown_reactions.count AS crown_count",
+      "post_comments.count AS comments_count",
       klient.raw(
         "COALESCE(love_reactions.count, 0) + COALESCE(good_reactions.count, 0) + COALESCE(crown_reactions.count, 0) AS reactions_count"
       )
     )
-
     .from("posts_post")
     .innerJoin("auth_user", "posts_post.owner_id", "auth_user.id")
     .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
+    .leftOuterJoin("reactions_reaction", function () {
+      this.on(function () {
+        this.on("reactions_reaction.post_id", "=", "posts_post.id");
+        this.andOn(
+          klient.raw(
+            "reactions_reaction.owner_id = ?",
+            `${Number(req.query.currentlyLoggedInUser)}`
+          )
+        );
+      });
+    })
     .leftOuterJoin(
       function () {
-        this.select("comments_comment.post_id")
-          .count("comments_comment.id")
-          .from("comments_comment")
-          .groupBy("comments_comment.post_id")
-          .as("post_comments");
+        this.select("reactions_reaction.post_id")
+          .count("reactions_reaction.id")
+          .from("reactions_reaction")
+          .where("reactions_reaction.reaction", "CROWN")
+          .groupBy("reactions_reaction.post_id")
+          .as("crown_reactions");
       },
-      "post_comments.post_id",
+      "crown_reactions.post_id",
       "posts_post.id"
     )
     .leftOuterJoin(
@@ -59,14 +73,13 @@ export const getPosts = async (req, res) => {
     )
     .leftOuterJoin(
       function () {
-        this.select("reactions_reaction.post_id")
-          .count("reactions_reaction.id")
-          .from("reactions_reaction")
-          .where("reactions_reaction.reaction", "CROWN")
-          .groupBy("reactions_reaction.post_id")
-          .as("crown_reactions");
+        this.select("comments_comment.post_id")
+          .count("comments_comment.id")
+          .from("comments_comment")
+          .groupBy("comments_comment.post_id")
+          .as("post_comments");
       },
-      "crown_reactions.post_id",
+      "post_comments.post_id",
       "posts_post.id"
     );
 
@@ -127,6 +140,7 @@ export const getPosts = async (req, res) => {
 
   // Debug: .toSQL().toNative()
   const posts = await query;
+  console.log(posts);
 
   res.send({
     // hard-coded temporarily to match old API format
@@ -147,6 +161,15 @@ const postsMapper = async (posts, currentlyLoggedInUser) => {
       getCloudinaryImage(post.profile_image),
     ]);
 
+    let currentUserReaction = null;
+
+    if (post.reaction_id) {
+      currentUserReaction = {
+        reaction_id: post.reaction_id,
+        reaction_type: post.reaction_type,
+      };
+    }
+
     postsArray.push({
       id: post.id,
       owner: post.post_owner,
@@ -160,11 +183,7 @@ const postsMapper = async (posts, currentlyLoggedInUser) => {
       image_filter: "normal", // REDUDANT
       category: post.category,
       status: "published", // REDUDANT
-      // current_user_reaction: - AUTH - OBJECT LOOKS LIKE:
-      //{
-      //     "reaction_id": reaction.id,
-      //     "reaction_type": reaction.reaction
-      // }
+      current_user_reaction: currentUserReaction,
       reactions_count: post.reactions_count,
       comments_count: post.comments_count,
       crown_count: post.crown_count,

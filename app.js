@@ -6,6 +6,7 @@ import { createPost, deletePost, editPost, getPosts } from "./posts.js";
 import { getComments } from "./comments.js";
 import { editProfile, getProfiles } from "./profiles.js";
 import { uploadFile, uploadImage } from "./image-upload.js";
+import { createReaction, editReaction } from "./reactions.js";
 
 // Sets BigInt type correctly to Number
 types.setTypeParser(20, (val) => {
@@ -60,6 +61,14 @@ app.patch("/posts/:id", editPost);
 
 // POSTS (DELETE)
 app.delete("/posts/:id", deletePost);
+
+// REACTIONS (POST)
+app.post("/reactions", createReaction);
+
+// REACTIONS (PATCH)
+app.patch("/reactions", editReaction);
+
+// REACTIONS (DELETE)
 
 // COMMENTS (GET)
 app.get("/comments", getComments);
