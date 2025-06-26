@@ -44,4 +44,44 @@ const createUpdateReactionMapper = async (reactionResponse) => {
   return reaction;
 };
 
-export const editReaction = async (req, res) => {};
+export const updateReaction = async (req, res) => {
+  const reactionSchema = z.object({
+    id: z.number(),
+    owner_id: z.number(),
+    post_id: z.number(),
+    reaction: z.enum(["CROWN", "GOOD", "LOVE"]),
+    created_on: z.date(),
+  });
+
+  const reactionData = {
+    id: req.body.id,
+    owner_id: req.body.owner,
+    post_id: req.body.post,
+    reaction: req.body.reaction,
+    created_on: new Date(),
+  };
+
+  const validatedData = reactionSchema.parse(reactionData);
+
+  const updatedReaction = await klient("reactions_reaction")
+    .where({ id: validatedData.id })
+    .update(validatedData, ["id"]);
+
+  const reactionResponse = await klient
+    .select("reactions_reaction.*", "auth_user.username AS owner")
+    .from("reactions_reaction")
+    .innerJoin("auth_user", "reactions_reaction.owner_id", "auth_user.id")
+    .where("reactions_reaction.id", updatedReaction[0].id);
+
+  res.send(await createUpdateReactionMapper(reactionResponse[0]));
+};
+
+export const deleteReaction = async (req, res) => {
+  const reactionId = Number(req.params.id);
+
+  await klient("reactions_reaction")
+    .where("reactions_reaction.id", reactionId)
+    .del();
+
+  res.sendStatus(200);
+};

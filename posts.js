@@ -281,7 +281,7 @@ const createUpdatePostMapper = async (postResponse, currentlyLoggedInUser) => {
 };
 
 // UPDATE POST
-export const editPost = async (req, res) => {
+export const updatePost = async (req, res) => {
   const postSchema = z.object({
     id: z.number(),
     title: z.string().trim().min(1).max(255),
@@ -311,7 +311,7 @@ export const editPost = async (req, res) => {
 
   const validatedData = postSchema.parse(postData);
 
-  const updatePost = await klient("posts_post")
+  const updatedPost = await klient("posts_post")
     .where({ id: validatedData.id })
     .update(validatedData, ["id"]);
 
@@ -325,7 +325,7 @@ export const editPost = async (req, res) => {
     .from("posts_post")
     .innerJoin("auth_user", "posts_post.owner_id", "auth_user.id")
     .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
-    .where("posts_post.id", updatePost[0].id);
+    .where("posts_post.id", updatedPost[0].id);
 
   res.send(
     await createUpdatePostMapper(
