@@ -32,6 +32,7 @@ export const createReaction = async (req, res) => {
   res.send(await createUpdateReactionMapper(reactionResponse[0]));
 };
 
+// CREATE/UPDATE REACTIONS MAPPER
 const createUpdateReactionMapper = async (reactionResponse) => {
   const reaction = {
     id: reactionResponse.id,
@@ -44,6 +45,7 @@ const createUpdateReactionMapper = async (reactionResponse) => {
   return reaction;
 };
 
+// UPDATE REACTION
 export const updateReaction = async (req, res) => {
   const reactionSchema = z.object({
     id: z.number(),
@@ -76,6 +78,7 @@ export const updateReaction = async (req, res) => {
   res.send(await createUpdateReactionMapper(reactionResponse[0]));
 };
 
+// DELETE REACTION
 export const deleteReaction = async (req, res) => {
   const reactionId = Number(req.params.id);
 

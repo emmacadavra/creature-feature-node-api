@@ -10,9 +10,6 @@ export const getPosts = async (req, res) => {
       "auth_user.username AS post_owner",
       "profiles_profile.id AS profile_id",
       "profiles_profile.image AS profile_image",
-      "reactions_reaction.id AS reaction_id",
-      "reactions_reaction.reaction AS reaction_type",
-      "reactions_reaction.owner_id AS reaction_owner",
       "crown_reactions.count AS crown_count",
       "good_reactions.count AS good_count",
       "love_reactions.count AS love_count",
@@ -24,17 +21,6 @@ export const getPosts = async (req, res) => {
     .from("posts_post")
     .innerJoin("auth_user", "posts_post.owner_id", "auth_user.id")
     .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
-    .leftOuterJoin("reactions_reaction", function () {
-      this.on(function () {
-        this.on("reactions_reaction.post_id", "=", "posts_post.id");
-        this.andOn(
-          klient.raw(
-            "reactions_reaction.owner_id = ?",
-            `${Number(req.query.currentlyLoggedInUser)}`
-          )
-        );
-      });
-    })
     .leftOuterJoin(
       function () {
         this.select("reactions_reaction.post_id")
@@ -82,6 +68,27 @@ export const getPosts = async (req, res) => {
       "post_comments.post_id",
       "posts_post.id"
     );
+
+  if (req.query.currentlyLoggedInUser) {
+    query
+      .select(
+        "reactions_reaction.id AS reaction_id",
+        "reactions_reaction.reaction AS reaction_type",
+        "reactions_reaction.owner_id AS reaction_owner"
+      )
+      .from("posts_post")
+      .leftOuterJoin("reactions_reaction", function () {
+        this.on(function () {
+          this.on("reactions_reaction.post_id", "=", "posts_post.id");
+          this.andOn(
+            klient.raw(
+              "reactions_reaction.owner_id = ?",
+              `${Number(req.query.currentlyLoggedInUser)}`
+            )
+          );
+        });
+      });
+  }
 
   if (req.query.owner__followed__owner__profile) {
     query
@@ -254,7 +261,7 @@ export const createPost = async (req, res) => {
   );
 };
 
-// CREATE/EDIT POSTS MAPPER
+// CREATE/UPDATE POSTS MAPPER
 const createUpdatePostMapper = async (postResponse, currentlyLoggedInUser) => {
   const [postImage, profileImage] = await Promise.all([
     getCloudinaryImage(postResponse.image),
@@ -335,6 +342,7 @@ export const updatePost = async (req, res) => {
   );
 };
 
+// DELETE POST
 export const deletePost = async (req, res) => {
   const postId = Number(req.params.id);
 

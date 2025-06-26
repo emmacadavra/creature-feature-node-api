@@ -2,11 +2,11 @@ import express from "express";
 import cors from "cors";
 import { types } from "pg";
 import knex from "knex";
-import { createPost, deletePost, updatePost, getPosts } from "./posts.js";
-import { getComments } from "./comments.js";
-import { editProfile, getProfiles } from "./profiles.js";
 import { uploadFile, uploadImage } from "./image-upload.js";
+import { createPost, deletePost, updatePost, getPosts } from "./posts.js";
 import { createReaction, deleteReaction, updateReaction } from "./reactions.js";
+import { createComment, getComments } from "./comments.js";
+import { editProfile, getProfiles } from "./profiles.js";
 
 // Sets BigInt type correctly to Number
 types.setTypeParser(20, (val) => {
@@ -73,6 +73,9 @@ app.delete("/reactions/:id", deleteReaction);
 
 // COMMENTS (GET)
 app.get("/comments", getComments);
+
+// COMMENTS (POST)
+app.post("/comments", createComment);
 
 // PROFILES (GET)
 app.get("/profiles{/:id}", getProfiles);
