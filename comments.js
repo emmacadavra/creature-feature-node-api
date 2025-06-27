@@ -62,7 +62,7 @@ const commentsMapper = async (comments, currentlyLoggedInUser) => {
       is_owner: true, // TEMP HARD-CODED,
       profile_id: comment.profile_id,
       profile_image: profileImage,
-      like_id: null, // REDUNDANT
+      like_id: null, // TEMP HARD-CODED,
       likes_count: comment.likes_count,
       created_on: comment.created_on,
       updated_on: comment.updated_on,

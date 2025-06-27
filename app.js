@@ -11,6 +11,7 @@ import {
   getComments,
   updateComment,
 } from "./comments.js";
+import { createLike, deleteLike } from "./like-comments.js";
 import { updateProfile, getProfiles } from "./profiles.js";
 
 // Sets BigInt type correctly to Number
@@ -87,6 +88,12 @@ app.patch("/comments/:id", updateComment);
 
 // COMMENTS (DELETE)
 app.delete("/comments/:id", deleteComment);
+
+// LIKE COMMENTS (POST)
+app.post("/like-comments", createLike);
+
+// LIKE COMMENTS (DELETE)
+app.delete("/like-comments/:id", deleteLike);
 
 // PROFILES (GET)
 app.get("/profiles{/:id}", getProfiles);
