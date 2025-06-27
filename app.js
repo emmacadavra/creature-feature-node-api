@@ -5,8 +5,13 @@ import knex from "knex";
 import { uploadFile, uploadImage } from "./image-upload.js";
 import { createPost, deletePost, updatePost, getPosts } from "./posts.js";
 import { createReaction, deleteReaction, updateReaction } from "./reactions.js";
-import { createComment, getComments } from "./comments.js";
-import { editProfile, getProfiles } from "./profiles.js";
+import {
+  createComment,
+  deleteComment,
+  getComments,
+  updateComment,
+} from "./comments.js";
+import { updateProfile, getProfiles } from "./profiles.js";
 
 // Sets BigInt type correctly to Number
 types.setTypeParser(20, (val) => {
@@ -56,7 +61,7 @@ app.get("/posts", getPosts);
 // POSTS (POST)
 app.post("/posts", createPost);
 
-// POSTS (PATCH / UPDATE)
+// POSTS (PATCH)
 app.patch("/posts/:id", updatePost);
 
 // POSTS (DELETE)
@@ -77,10 +82,16 @@ app.get("/comments", getComments);
 // COMMENTS (POST)
 app.post("/comments", createComment);
 
+// COMMENTS (PATCH)
+app.patch("/comments/:id", updateComment);
+
+// COMMENTS (DELETE)
+app.delete("/comments/:id", deleteComment);
+
 // PROFILES (GET)
 app.get("/profiles{/:id}", getProfiles);
 
 // PROFILES (PATCH / UPDATE)
-app.patch("/profiles/:id", editProfile);
+app.patch("/profiles/:id", updateProfile);
 
 app.listen(4000);

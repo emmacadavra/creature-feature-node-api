@@ -136,3 +136,55 @@ const createUpdateCommentMapper = async (commentResponse) => {
 
   return comment;
 };
+
+// UPDATE COMMENT
+export const updateComment = async (req, res) => {
+  const commentSchema = z.object({
+    id: z.number(),
+    content: z.string(),
+    owner_id: z.number(),
+    updated_on: z.date(),
+  });
+
+  const commentData = {
+    id: Number(req.params.id),
+    content: req.body.content,
+    owner_id: req.body.owner,
+    updated_on: new Date(),
+  };
+
+  const validatedData = commentSchema.parse(commentData);
+
+  const updatedComment = await klient("comments_comment")
+    .where({ id: validatedData.id })
+    .update(validatedData, ["id"]);
+
+  const commentResponse = await klient
+    .select(
+      "comments_comment.*",
+      "auth_user.username AS comment_owner",
+      "profiles_profile.owner_id AS profile_id",
+      "profiles_profile.image AS profile_image"
+    )
+    .from("comments_comment")
+    .innerJoin("auth_user", "comments_comment.owner_id", "auth_user.id")
+    .innerJoin(
+      "profiles_profile",
+      "comments_comment.owner_id",
+      "profiles_profile.owner_id"
+    )
+    .where("comments_comment.id", updatedComment[0].id);
+
+  res.send(await createUpdateCommentMapper(commentResponse[0]));
+};
+
+// DELETE COMMENT
+export const deleteComment = async (req, res) => {
+  const commentId = Number(req.params.id);
+
+  await klient("comments_comment")
+    .where("comments_comment.id", commentId)
+    .del();
+
+  res.sendStatus(200);
+};

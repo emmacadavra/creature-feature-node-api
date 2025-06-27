@@ -93,7 +93,7 @@ const profilesMapper = async (profiles, currentlyLoggedInUser) => {
 };
 
 // UPDATE PROFILE
-export const editProfile = async (req, res) => {
+export const updateProfile = async (req, res) => {
   const profileSchema = z.object({
     id: z.number(),
     name: z.string().trim().min(1).max(255),
@@ -115,7 +115,7 @@ export const editProfile = async (req, res) => {
 
   const validatedData = profileSchema.parse(profileData);
 
-  const updateProfile = await klient("profiles_profile")
+  const updatedProfile = await klient("profiles_profile")
     .where({ id: validatedData.id })
     .update(validatedData, ["id"]);
 
@@ -162,7 +162,7 @@ export const editProfile = async (req, res) => {
       "user_follows.owner_id",
       "profiles_profile.owner_id"
     )
-    .where("profiles_profile.id", updateProfile[0].id);
+    .where("profiles_profile.id", updatedProfile[0].id);
 
   const profileResponse = await query;
 
