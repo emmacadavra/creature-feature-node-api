@@ -147,13 +147,12 @@ export const getPosts = async (req, res) => {
 
   // Debug: .toSQL().toNative()
   const posts = await query;
-  console.log(posts);
 
   res.send({
     // hard-coded temporarily to match old API format
-    count: 3,
-    next: null,
-    previous: null,
+    totalItems: 30,
+    totalPages: 3,
+    currentPage: 1,
     results: await postsMapper(posts, req.query.currentlyLoggedInUser),
   });
 };

@@ -13,6 +13,7 @@ import {
 } from "./comments.js";
 import { createLike, deleteLike } from "./like-comments.js";
 import { updateProfile, getProfiles } from "./profiles.js";
+import { createFollow, deleteFollow } from "./followers.js";
 
 // Sets BigInt type correctly to Number
 types.setTypeParser(20, (val) => {
@@ -100,5 +101,11 @@ app.get("/profiles{/:id}", getProfiles);
 
 // PROFILES (PATCH / UPDATE)
 app.patch("/profiles/:id", updateProfile);
+
+// FOLLOWERS (POST)
+app.post("/followers", createFollow);
+
+// FOLLOWERS (DELETE)
+app.delete("/followers/:id", deleteFollow);
 
 app.listen(4000);

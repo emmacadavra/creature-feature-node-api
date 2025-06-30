@@ -10,7 +10,7 @@ export const getProfiles = async (req, res) => {
       "auth_user.username AS profile_owner",
       "user_posts.count AS posts_count",
       "user_followers.count AS followers_count",
-      "user_follows.count AS followed_count"
+      "user_follows.count AS following_count"
     )
     .from("profiles_profile")
     .innerJoin("auth_user", "profiles_profile.id", "auth_user.id")
@@ -48,6 +48,22 @@ export const getProfiles = async (req, res) => {
       "profiles_profile.owner_id"
     );
 
+  if (req.query.currentlyLoggedInUser) {
+    query
+      .select("followers_follower.id AS following_id")
+      .from("profiles_profile")
+      .leftOuterJoin("followers_follower", function () {
+        this.on(function () {
+          this.on("followers_follower.followed_id", "=", "profiles_profile.id");
+          this.andOn(
+            klient.raw(
+              "followers_follower.owner_id = ?",
+              `${Number(req.query.currentlyLoggedInUser)}`
+            )
+          );
+        });
+      });
+  }
   if (req.params.id) {
     const profileId = Number(req.params.id);
     query.where("profiles_profile.id", profileId);
@@ -73,6 +89,22 @@ const profilesMapper = async (profiles, currentlyLoggedInUser) => {
   for (const profile of profiles) {
     const profileImage = await getCloudinaryImage(profile.image);
 
+    let postsCount = profile.posts_count;
+    let followersCount = profile.followers_count;
+    let followingCount = profile.following_count;
+
+    if (!profile.posts_count) {
+      postsCount = 0;
+    }
+
+    if (!profile.followers_count) {
+      followersCount = 0;
+    }
+
+    if (!profile.following_count) {
+      followingCount = 0;
+    }
+
     profilesArray.push({
       id: profile.id,
       owner: profile.profile_owner,
@@ -80,10 +112,10 @@ const profilesMapper = async (profiles, currentlyLoggedInUser) => {
       name: profile.name,
       content: profile.content,
       image: profileImage,
-      following_id: null,
-      posts_count: profile.posts_count,
-      followers_count: profile.followers_count,
-      following_count: profile.following_count,
+      following_id: profile.following_id,
+      posts_count: postsCount,
+      followers_count: followersCount,
+      following_count: followingCount,
       created_on: profile.created_on,
       updated_on: profile.updated_on,
     });
@@ -125,7 +157,7 @@ export const updateProfile = async (req, res) => {
       "auth_user.username AS profile_owner",
       "user_posts.count AS posts_count",
       "user_followers.count AS followers_count",
-      "user_follows.count AS followed_count"
+      "user_follows.count AS following_count"
     )
     .from("profiles_profile")
     .innerJoin("auth_user", "profiles_profile.id", "auth_user.id")
@@ -176,11 +208,11 @@ const updateProfileMapper = async (profileResponse) => {
   const profile = {
     id: profileResponse.id,
     owner: profileResponse.profile_owner,
-    is_owner: true, // TEMP HARD-CODED
+    // is_owner: true, // TEMP HARD-CODED - NOT NECESSARY?
     name: profileResponse.name,
     content: profileResponse.content,
     image: profileImage,
-    following_id: null,
+    // following_id: null, - NOT NECESSARY FOR EDIT?
     posts_count: profileResponse.posts_count,
     followers_count: profileResponse.followers_count,
     following_count: profileResponse.following_count,
