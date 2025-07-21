@@ -4,8 +4,58 @@ import * as z from "zod/v4";
 
 // GET POSTS
 export const getPosts = async (req, res) => {
-  const query = klient
-    .select(
+  const pageSize = 10;
+  const page = Number(req.query.page) ?? 1;
+
+  // Debug: .toSQL().toNative()
+  const posts = await queryBuilder("postsQuery", {
+    pageSize: pageSize,
+    currentlyLoggedInUser: req.query.currentlyLoggedInUser,
+    followedProfiles: req.query.owner__followed__owner__profile,
+    myReactions: req.query.reactions__owner__profile,
+    category: req.query.category,
+    profilePosts: req.query.owner__profile,
+    search: req.query.search,
+    page: page,
+    ordering: req.query.ordering,
+  });
+
+  const postsCount = await queryBuilder("countQuery", {
+    currentlyLoggedInUser: req.query.currentlyLoggedInUser,
+    followedProfiles: req.query.owner__followed__owner__profile,
+    myReactions: req.query.reactions__owner__profile,
+    category: req.query.category,
+    profilePosts: req.query.owner__profile,
+    search: req.query.search,
+  });
+
+  res.send({
+    totalItems: Number(postsCount[0].count),
+    totalPages: Math.ceil(postsCount[0].count / pageSize),
+    currentPage: page,
+    results: await postsMapper(posts, req.query.currentlyLoggedInUser),
+  });
+};
+
+// POSTS QUERY BUILDER
+const queryBuilder = (
+  queryType,
+  {
+    pageSize,
+    currentlyLoggedInUser,
+    followedProfiles,
+    myReactions,
+    category,
+    profilePosts,
+    search,
+    page,
+    ordering,
+  }
+) => {
+  let query;
+
+  if (queryType === "postsQuery") {
+    query = klient.select(
       "posts_post.*",
       "auth_user.username AS post_owner",
       "profiles_profile.id AS profile_id",
@@ -15,9 +65,24 @@ export const getPosts = async (req, res) => {
       "love_reactions.count AS love_count",
       "post_comments.count AS comments_count",
       klient.raw(
-        "COALESCE(love_reactions.count, 0) + COALESCE(good_reactions.count, 0) + COALESCE(crown_reactions.count, 0) AS reactions_count"
+        "COALESCE(crown_reactions.count, 0) + COALESCE(good_reactions.count, 0) + COALESCE(love_reactions.count, 0) AS reactions_count"
       )
-    )
+    );
+  }
+
+  if (queryType === "postsQuery" && currentlyLoggedInUser) {
+    query.select(
+      "reactions_reaction.id AS reaction_id",
+      "reactions_reaction.reaction AS reaction_type",
+      "reactions_reaction.owner_id AS reaction_owner"
+    );
+  }
+
+  if (queryType === "countQuery") {
+    query = klient.count("*");
+  }
+
+  query
     .from("posts_post")
     .innerJoin("auth_user", "posts_post.owner_id", "auth_user.id")
     .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
@@ -69,92 +134,65 @@ export const getPosts = async (req, res) => {
       "posts_post.id"
     );
 
-  if (req.query.currentlyLoggedInUser) {
-    query
-      .select(
-        "reactions_reaction.id AS reaction_id",
-        "reactions_reaction.reaction AS reaction_type",
-        "reactions_reaction.owner_id AS reaction_owner"
-      )
-      .from("posts_post")
-      .leftOuterJoin("reactions_reaction", function () {
-        this.on(function () {
-          this.on("reactions_reaction.post_id", "=", "posts_post.id");
-          this.andOn(
-            klient.raw(
-              "reactions_reaction.owner_id = ?",
-              `${Number(req.query.currentlyLoggedInUser)}`
-            )
-          );
-        });
+  if (currentlyLoggedInUser) {
+    query.leftOuterJoin("reactions_reaction", function () {
+      this.on(function () {
+        this.on("reactions_reaction.post_id", "=", "posts_post.id");
+        this.andOn(
+          klient.raw(
+            "reactions_reaction.owner_id = ?",
+            `${Number(currentlyLoggedInUser)}`
+          )
+        );
       });
+    });
   }
 
-  if (req.query.owner__followed__owner__profile) {
+  if (followedProfiles) {
     query
       .innerJoin(
         "followers_follower",
         "posts_post.owner_id",
         "followers_follower.followed_id"
       )
-      .where(
-        "followers_follower.owner_id",
-        req.query.owner__followed__owner__profile
-      );
+      .where("followers_follower.owner_id", followedProfiles);
   }
 
-  if (req.query.reactions__owner__profile) {
+  if (myReactions) {
     query
       .innerJoin(
-        "reactions_reaction",
+        "reactions_reaction AS my_reactions",
         "posts_post.id",
-        "reactions_reaction.post_id"
+        "my_reactions.post_id"
       )
-      .where(
-        "reactions_reaction.owner_id",
-        req.query.reactions__owner__profile
-      );
+      .where("my_reactions.owner_id", myReactions);
   }
 
-  if (req.query.category) {
-    query.where("posts_post.category", req.query.category);
+  if (category) {
+    query.where("posts_post.category", category);
   }
 
-  if (req.query.owner__profile) {
-    query.where("posts_post.owner_id", req.query.owner__profile);
+  if (profilePosts) {
+    query.where("posts_post.owner_id", profilePosts);
   }
 
-  if (req.query.search) {
+  if (search) {
     query.where(function () {
-      this.whereILike("posts_post.title", `%${req.query.search}%`);
-      this.orWhereILike("posts_post.content", `%${req.query.search}%`);
-      this.orWhereILike("auth_user.username", `%${req.query.search}%`);
+      this.whereILike("posts_post.title", `%${search}%`);
+      this.orWhereILike("posts_post.content", `%${search}%`);
+      this.orWhereILike("auth_user.username", `%${search}%`);
     });
   }
 
-  const pageSize = 10;
-  const page = req.query.page ?? 1;
-  // ^ the ?? operator "returns its right-hand side operand when its left-hand side operand is null or undefined, and otherwise returns its left-hand side operand."
-
-  if (req.query.ordering) {
+  if (queryType === "postsQuery" && ordering) {
     query.orderBy("reactions_reaction.created_on", "desc");
-    // hard-coded temporarily as only reactions have a different ordering rule
-  } else {
+    query.limit(pageSize).offset((page - 1) * pageSize);
+  } else if (queryType === "postsQuery") {
     query.orderBy("posts_post.created_on", "desc");
+    query.limit(pageSize).offset((page - 1) * pageSize);
   }
 
-  query.limit(pageSize).offset((page - 1) * pageSize);
-
-  // Debug: .toSQL().toNative()
-  const posts = await query;
-
-  res.send({
-    // hard-coded temporarily to match old API format
-    totalItems: 30,
-    totalPages: 3,
-    currentPage: 1,
-    results: await postsMapper(posts, req.query.currentlyLoggedInUser),
-  });
+  return query;
 };
 
 // POSTS MAPPER (GET)
