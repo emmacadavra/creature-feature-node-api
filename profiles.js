@@ -4,14 +4,47 @@ import * as z from "zod/v4";
 
 // GET PROFILES
 export const getProfiles = async (req, res) => {
-  const query = klient
-    .select(
+  const profiles = await buildQuery("profilesQuery", {
+    currentlyLoggedInUser: req.query.currentlyLoggedInUser,
+    profilePageId: req.params.id,
+  });
+
+  const profilesCount = await buildQuery("countQuery", {
+    currentlyLoggedInUser: req.query.currentlyLoggedInUser,
+    profilePageId: req.params.id,
+  });
+
+  res.send({
+    totalItems: Number(profilesCount[0].count),
+    next: null, // HARD-CODED, NEEDS REWORKING
+    previous: null, // HARD-CODED, NEEDS REWORKING
+    results: await profilesMapper(profiles, req.query.currentlyLoggedInUser),
+  });
+};
+
+// PROFILES QUERY BUILDER
+const buildQuery = (queryType, { currentlyLoggedInUser, profilePageId }) => {
+  let query;
+
+  if (queryType === "profilesQuery") {
+    query = klient.select(
       "profiles_profile.*",
       "auth_user.username AS profile_owner",
       "user_posts.count AS posts_count",
       "user_followers.count AS followers_count",
       "user_follows.count AS following_count"
-    )
+    );
+  }
+
+  if (queryType === "profilesQuery" && currentlyLoggedInUser) {
+    query.select("followers_follower.id AS following_id");
+  }
+
+  if (queryType === "countQuery") {
+    query = klient.count("*");
+  }
+
+  query
     .from("profiles_profile")
     .innerJoin("auth_user", "profiles_profile.id", "auth_user.id")
     .leftOuterJoin(
@@ -48,38 +81,30 @@ export const getProfiles = async (req, res) => {
       "profiles_profile.owner_id"
     );
 
-  if (req.query.currentlyLoggedInUser) {
-    query
-      .select("followers_follower.id AS following_id")
-      .from("profiles_profile")
-      .leftOuterJoin("followers_follower", function () {
-        this.on(function () {
-          this.on("followers_follower.followed_id", "=", "profiles_profile.id");
-          this.andOn(
-            klient.raw(
-              "followers_follower.owner_id = ?",
-              `${Number(req.query.currentlyLoggedInUser)}`
-            )
-          );
-        });
+  if (currentlyLoggedInUser) {
+    query.leftOuterJoin("followers_follower", function () {
+      this.on(function () {
+        this.on("followers_follower.followed_id", "=", "profiles_profile.id");
+        this.andOn(
+          klient.raw(
+            "followers_follower.owner_id = ?",
+            `${Number(currentlyLoggedInUser)}`
+          )
+        );
       });
+    });
   }
-  if (req.params.id) {
-    const profileId = Number(req.params.id);
+
+  if (profilePageId) {
+    const profileId = Number(profilePageId);
     query.where("profiles_profile.id", profileId);
   }
 
-  query.orderBy("followers_count", "desc");
+  if (queryType === "profilesQuery") {
+    query.orderBy("followers_count", "desc");
+  }
 
-  const profiles = await query;
-
-  res.send({
-    // hard-coded temporarily to match old API format
-    count: 3,
-    next: null,
-    previous: null,
-    results: await profilesMapper(profiles, req.query.currentlyLoggedInUser),
-  });
+  return query;
 };
 
 // PROFILES MAPPER

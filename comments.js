@@ -8,14 +8,53 @@ export const getComments = async (req, res) => {
     throw new Error("Post ID must be provided!");
   }
 
-  const query = klient
-    .select(
+  const pageSize = 10;
+  const page = Number(req.query.page) ?? 1; // NOT WORKING
+
+  // Debug: .toSQL().toNative()
+  const comments = await buildQuery("commentsQuery", req.query.post, {
+    currentlyLoggedInUser: req.query.currentlyLoggedInUser,
+    pageSize: pageSize,
+    page: page,
+  });
+
+  const commentsCount = await buildQuery("countQuery", req.query.post, {
+    currentlyLoggedInUser: req.query.currentlyLoggedInUser,
+  });
+
+  console.log(page);
+
+  res.send({
+    totalItems: Number(commentsCount[0].count),
+    totalPages: Math.ceil(commentsCount[0].count / pageSize),
+    currentPage: page, // NOT WORKING
+    results: await commentsMapper(comments, req.query.currentlyLoggedInUser),
+  });
+};
+
+// COMMENTS QUERY BUILDER
+const buildQuery = (queryType, postId, { currentlyLoggedInUser }) => {
+  let query;
+
+  if (queryType === "commentsQuery") {
+    query = klient.select(
       "comments_comment.*",
       "auth_user.username AS comment_owner",
       "profiles_profile.owner_id AS profile_id",
       "profiles_profile.image AS profile_image",
       "comment_likes.count AS likes_count"
-    )
+    );
+  }
+
+  if (queryType === "commentsQuery" && currentlyLoggedInUser) {
+    query.select("like_comments_likecomment.id AS like_id");
+  }
+
+  if (queryType === "countQuery") {
+    query = klient.count("*");
+  }
+
+  query
     .from("comments_comment")
     .innerJoin("auth_user", "comments_comment.owner_id", "auth_user.id")
     .innerJoin(
@@ -34,19 +73,33 @@ export const getComments = async (req, res) => {
       "comment_likes.comment_id",
       "comments_comment.id"
     )
-    .where("comments_comment.post_id", req.query.post)
-    .orderBy("comments_comment.created_on", "desc");
+    .where("comments_comment.post_id", postId);
 
-  // Debug: .toSQL().toNative()
-  const comments = await query;
+  if (currentlyLoggedInUser) {
+    query.leftOuterJoin("like_comments_likecomment", function () {
+      this.on(function () {
+        this.on(
+          "like_comments_likecomment.comment_id",
+          "=",
+          "comments_comment.id"
+        );
+        this.andOn(
+          klient.raw(
+            "like_comments_likecomment.owner_id = ?",
+            `${Number(currentlyLoggedInUser)}`
+          )
+        );
+      });
+    });
+  }
 
-  res.send({
-    // hard-coded temporarily to match old API format
-    count: 3,
-    next: null,
-    previous: null,
-    results: await commentsMapper(comments, req.query.currentlyLoggedInUser),
-  });
+  if (queryType === "commentsQuery") {
+    query.orderBy("comments_comment.created_on", "desc");
+    // .limit(pageSize)
+    // .offset((page - 1) * pageSize);
+  }
+
+  return query;
 };
 
 // COMMENTS MAPPER
@@ -56,13 +109,19 @@ const commentsMapper = async (comments, currentlyLoggedInUser) => {
   for (const comment of comments) {
     const profileImage = await getCloudinaryImage(comment.profile_image);
 
+    let like_id = null;
+
+    if (comment.like_id) {
+      like_id = comment.like_id;
+    }
+
     commentsArray.push({
       id: comment.id,
       owner: comment.comment_owner,
-      is_owner: true, // TEMP HARD-CODED,
+      is_owner: Number(currentlyLoggedInUser) === comment.profile_id,
       profile_id: comment.profile_id,
       profile_image: profileImage,
-      like_id: null, // TEMP HARD-CODED,
+      like_id: like_id,
       likes_count: comment.likes_count,
       created_on: comment.created_on,
       updated_on: comment.updated_on,

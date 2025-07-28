@@ -8,7 +8,7 @@ export const getPosts = async (req, res) => {
   const page = Number(req.query.page) ?? 1;
 
   // Debug: .toSQL().toNative()
-  const posts = await queryBuilder("postsQuery", {
+  const posts = await buildQuery("postsQuery", {
     pageSize: pageSize,
     currentlyLoggedInUser: req.query.currentlyLoggedInUser,
     followedProfiles: req.query.owner__followed__owner__profile,
@@ -20,7 +20,7 @@ export const getPosts = async (req, res) => {
     ordering: req.query.ordering,
   });
 
-  const postsCount = await queryBuilder("countQuery", {
+  const postsCount = await buildQuery("countQuery", {
     currentlyLoggedInUser: req.query.currentlyLoggedInUser,
     followedProfiles: req.query.owner__followed__owner__profile,
     myReactions: req.query.reactions__owner__profile,
@@ -38,7 +38,7 @@ export const getPosts = async (req, res) => {
 };
 
 // POSTS QUERY BUILDER
-const queryBuilder = (
+const buildQuery = (
   queryType,
   {
     pageSize,
@@ -185,11 +185,15 @@ const queryBuilder = (
   }
 
   if (queryType === "postsQuery" && ordering) {
-    query.orderBy("reactions_reaction.created_on", "desc");
-    query.limit(pageSize).offset((page - 1) * pageSize);
+    query
+      .orderBy("reactions_reaction.created_on", "desc")
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
   } else if (queryType === "postsQuery") {
-    query.orderBy("posts_post.created_on", "desc");
-    query.limit(pageSize).offset((page - 1) * pageSize);
+    query
+      .orderBy("posts_post.created_on", "desc")
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
   }
 
   return query;
