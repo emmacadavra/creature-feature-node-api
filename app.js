@@ -3,6 +3,7 @@ import cors from "cors";
 import { types } from "pg";
 import knex from "knex";
 import { uploadFile, uploadImage } from "./image-upload.js";
+import { login, user, sessions } from "./auth.js";
 import { createPost, deletePost, updatePost, getPosts } from "./posts.js";
 import { createReaction, deleteReaction, updateReaction } from "./reactions.js";
 import {
@@ -14,6 +15,7 @@ import {
 import { createLike, deleteLike } from "./like-comments.js";
 import { updateProfile, getProfiles } from "./profiles.js";
 import { createFollow, deleteFollow } from "./followers.js";
+import cookieParser from "cookie-parser";
 
 // Sets BigInt type correctly to Number
 types.setTypeParser(20, (val) => {
@@ -23,6 +25,7 @@ types.setTypeParser(20, (val) => {
 // Express Connection
 const app = express();
 
+app.use(cookieParser());
 app.use(express.json());
 
 app.use(
@@ -31,6 +34,13 @@ app.use(
     credentials: true,
   })
 );
+
+app.use((req, res, next) => {
+  const authToken = req.cookies["auth_token"];
+  // console.log("authToken", authToken);
+  req.user = sessions[authToken] ?? null;
+  next();
+});
 
 // Knex Connection
 export const klient = knex({
@@ -56,6 +66,10 @@ app.post("/image-upload", uploadFile, uploadImage);
 
 // app.route("/posts").get(getPosts).post(createPost);
 // app.route("/posts/:id").patch(editPost).delete(deletePost);
+
+app.post("/login", login);
+
+app.get("/user", user);
 
 // POSTS (GET)
 app.get("/posts", getPosts);

@@ -4,6 +4,7 @@ import * as z from "zod/v4";
 
 // GET COMMENTS
 export const getComments = async (req, res) => {
+  console.log("Cookies: ", req.cookies);
   if (!req.query.post) {
     throw new Error("Post ID must be provided!");
   }
@@ -11,24 +12,24 @@ export const getComments = async (req, res) => {
   const pageSize = 10;
   const page = Number(req.query.page) ?? 1; // NOT WORKING
 
+  const currentlyLoggedInUser = req.user?.id;
+
   // Debug: .toSQL().toNative()
   const comments = await buildQuery("commentsQuery", req.query.post, {
-    currentlyLoggedInUser: req.query.currentlyLoggedInUser,
+    currentlyLoggedInUser: currentlyLoggedInUser,
     pageSize: pageSize,
     page: page,
   });
 
   const commentsCount = await buildQuery("countQuery", req.query.post, {
-    currentlyLoggedInUser: req.query.currentlyLoggedInUser,
+    currentlyLoggedInUser: currentlyLoggedInUser,
   });
-
-  console.log(page);
 
   res.send({
     totalItems: Number(commentsCount[0].count),
     totalPages: Math.ceil(commentsCount[0].count / pageSize),
     currentPage: page, // NOT WORKING
-    results: await commentsMapper(comments, req.query.currentlyLoggedInUser),
+    results: await commentsMapper(comments, currentlyLoggedInUser),
   });
 };
 

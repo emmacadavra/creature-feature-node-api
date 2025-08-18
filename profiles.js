@@ -4,21 +4,23 @@ import * as z from "zod/v4";
 
 // GET PROFILES
 export const getProfiles = async (req, res) => {
+  const currentlyLoggedInUser = req.user?.id;
+
   const profiles = await buildQuery("profilesQuery", {
-    currentlyLoggedInUser: req.query.currentlyLoggedInUser,
+    currentlyLoggedInUser: currentlyLoggedInUser,
     profilePageId: req.params.id,
   });
 
   const profilesCount = await buildQuery("countQuery", {
-    currentlyLoggedInUser: req.query.currentlyLoggedInUser,
+    currentlyLoggedInUser: currentlyLoggedInUser,
     profilePageId: req.params.id,
   });
 
   res.send({
     totalItems: Number(profilesCount[0].count),
-    next: null, // HARD-CODED, NEEDS REWORKING
-    previous: null, // HARD-CODED, NEEDS REWORKING
-    results: await profilesMapper(profiles, req.query.currentlyLoggedInUser),
+    next: null, // HARD-CODED, NEEDS REWORKING?
+    previous: null, // HARD-CODED, NEEDS REWORKING?
+    results: await profilesMapper(profiles, currentlyLoggedInUser),
   });
 };
 

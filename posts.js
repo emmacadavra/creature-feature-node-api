@@ -6,11 +6,12 @@ import * as z from "zod/v4";
 export const getPosts = async (req, res) => {
   const pageSize = 10;
   const page = Number(req.query.page) ?? 1;
+  const currentlyLoggedInUser = req.user?.id;
 
   // Debug: .toSQL().toNative()
   const posts = await buildQuery("postsQuery", {
     pageSize: pageSize,
-    currentlyLoggedInUser: req.query.currentlyLoggedInUser,
+    currentlyLoggedInUser: currentlyLoggedInUser,
     followedProfiles: req.query.owner__followed__owner__profile,
     myReactions: req.query.reactions__owner__profile,
     category: req.query.category,
@@ -21,7 +22,7 @@ export const getPosts = async (req, res) => {
   });
 
   const postsCount = await buildQuery("countQuery", {
-    currentlyLoggedInUser: req.query.currentlyLoggedInUser,
+    currentlyLoggedInUser: currentlyLoggedInUser,
     followedProfiles: req.query.owner__followed__owner__profile,
     myReactions: req.query.reactions__owner__profile,
     category: req.query.category,
@@ -33,7 +34,7 @@ export const getPosts = async (req, res) => {
     totalItems: Number(postsCount[0].count),
     totalPages: Math.ceil(postsCount[0].count / pageSize),
     currentPage: page,
-    results: await postsMapper(posts, req.query.currentlyLoggedInUser),
+    results: await postsMapper(posts, req.user?.id),
   });
 };
 
@@ -247,6 +248,10 @@ const postsMapper = async (posts, currentlyLoggedInUser) => {
 
 // CREATE POST
 export const createPost = async (req, res) => {
+  if (!req.user) {
+    return res.sendStatus(401);
+  }
+
   const postSchema = z.object({
     title: z.string().trim().min(1).max(255),
     content: z.string().trim(),
@@ -270,7 +275,7 @@ export const createPost = async (req, res) => {
     image_filter: "normal",
     created_on: new Date(),
     updated_on: new Date(),
-    owner_id: req.query.currentlyLoggedInUser,
+    owner_id: req.user.id,
     category: req.body.category,
     status: "published",
     // excerpt: null // REDUNDANT
@@ -294,12 +299,7 @@ export const createPost = async (req, res) => {
     .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
     .where("posts_post.id", insertResponse[0].id);
 
-  res.send(
-    await createUpdatePostMapper(
-      postResponse[0],
-      req.query.currentlyLoggedInUser
-    )
-  );
+  res.send(await createUpdatePostMapper(postResponse[0], req.user.id));
 };
 
 // CREATE/UPDATE POSTS MAPPER
@@ -349,7 +349,7 @@ export const updatePost = async (req, res) => {
     title: req.body.title,
     content: req.body.content,
     updated_on: new Date(),
-    owner_id: req.query.currentlyLoggedInUser,
+    owner_id: req.user.id,
     category: req.body.category,
   };
 
@@ -375,12 +375,7 @@ export const updatePost = async (req, res) => {
     .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
     .where("posts_post.id", updatedPost[0].id);
 
-  res.send(
-    await createUpdatePostMapper(
-      postResponse[0],
-      req.query.currentlyLoggedInUser
-    )
-  );
+  res.send(await createUpdatePostMapper(postResponse[0], req.user.id));
 };
 
 // DELETE POST
