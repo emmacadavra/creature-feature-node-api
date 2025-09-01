@@ -2,6 +2,11 @@ import { klient } from "./app.js";
 import * as z from "zod/v4";
 
 export const createReaction = async (req, res) => {
+  if (!req.user) {
+    return res.sendStatus(401);
+  }
+  const currentlyLoggedInUser = req.user.id;
+
   const reactionSchema = z.object({
     owner_id: z.number(),
     post_id: z.number(),
@@ -10,7 +15,7 @@ export const createReaction = async (req, res) => {
   });
 
   const reactionData = {
-    owner_id: req.body.owner,
+    owner_id: currentlyLoggedInUser,
     post_id: req.body.post,
     reaction: req.body.reaction,
     created_on: new Date(),
@@ -26,7 +31,12 @@ export const createReaction = async (req, res) => {
   const reactionResponse = await klient
     .select("reactions_reaction.*", "auth_user.username AS owner")
     .from("reactions_reaction")
-    .innerJoin("auth_user", "reactions_reaction.owner_id", "auth_user.id")
+    .innerJoin(
+      "profiles_profile",
+      "reactions_reaction.owner_id",
+      "profiles_profile.id"
+    )
+    .innerJoin("auth_user", "profiles_profile.owner_id", "auth_user.id")
     .where("reactions_reaction.id", insertResponse[0].id);
 
   res.send(await createUpdateReactionMapper(reactionResponse[0]));
@@ -47,6 +57,11 @@ const createUpdateReactionMapper = async (reactionResponse) => {
 
 // UPDATE REACTION
 export const updateReaction = async (req, res) => {
+  if (!req.user) {
+    return res.sendStatus(401);
+  }
+  const currentlyLoggedInUser = req.user.id;
+
   const reactionSchema = z.object({
     id: z.number(),
     owner_id: z.number(),
@@ -57,7 +72,7 @@ export const updateReaction = async (req, res) => {
 
   const reactionData = {
     id: req.body.id,
-    owner_id: req.body.owner,
+    owner_id: currentlyLoggedInUser,
     post_id: req.body.post,
     reaction: req.body.reaction,
     created_on: new Date(),
@@ -72,7 +87,12 @@ export const updateReaction = async (req, res) => {
   const reactionResponse = await klient
     .select("reactions_reaction.*", "auth_user.username AS owner")
     .from("reactions_reaction")
-    .innerJoin("auth_user", "reactions_reaction.owner_id", "auth_user.id")
+    .innerJoin(
+      "profiles_profile",
+      "profiles_profile.id",
+      "reactions_reaction.owner_id"
+    )
+    .innerJoin("auth_user", "profiles_profile.owner_id", "auth_user.id")
     .where("reactions_reaction.id", updatedReaction[0].id);
 
   res.send(await createUpdateReactionMapper(reactionResponse[0]));

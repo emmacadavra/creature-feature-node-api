@@ -48,7 +48,7 @@ const buildQuery = (queryType, { currentlyLoggedInUser, profilePageId }) => {
 
   query
     .from("profiles_profile")
-    .innerJoin("auth_user", "profiles_profile.id", "auth_user.id")
+    .innerJoin("auth_user", "profiles_profile.owner_id", "auth_user.id")
     .leftOuterJoin(
       function () {
         this.select("posts_post.owner_id")
@@ -58,7 +58,7 @@ const buildQuery = (queryType, { currentlyLoggedInUser, profilePageId }) => {
           .as("user_posts");
       },
       "user_posts.owner_id",
-      "profiles_profile.owner_id"
+      "profiles_profile.id"
     )
     .leftOuterJoin(
       function () {
@@ -69,7 +69,7 @@ const buildQuery = (queryType, { currentlyLoggedInUser, profilePageId }) => {
           .as("user_followers");
       },
       "user_followers.followed_id",
-      "profiles_profile.owner_id"
+      "profiles_profile.id"
     )
     .leftOuterJoin(
       function () {
@@ -80,7 +80,7 @@ const buildQuery = (queryType, { currentlyLoggedInUser, profilePageId }) => {
           .as("user_follows");
       },
       "user_follows.owner_id",
-      "profiles_profile.owner_id"
+      "profiles_profile.id"
     );
 
   if (currentlyLoggedInUser) {
@@ -90,7 +90,7 @@ const buildQuery = (queryType, { currentlyLoggedInUser, profilePageId }) => {
         this.andOn(
           klient.raw(
             "followers_follower.owner_id = ?",
-            `${Number(currentlyLoggedInUser)}`
+            `${currentlyLoggedInUser}`
           )
         );
       });
@@ -135,7 +135,7 @@ const profilesMapper = async (profiles, currentlyLoggedInUser) => {
     profilesArray.push({
       id: profile.id,
       owner: profile.profile_owner,
-      is_owner: Number(currentlyLoggedInUser) === profile.id,
+      is_owner: currentlyLoggedInUser === profile.id,
       name: profile.name,
       content: profile.content,
       image: profileImage,
@@ -153,6 +153,11 @@ const profilesMapper = async (profiles, currentlyLoggedInUser) => {
 
 // UPDATE PROFILE
 export const updateProfile = async (req, res) => {
+  if (!req.user) {
+    return res.sendStatus(401);
+  }
+  const currentlyLoggedInUser = req.user.id;
+
   const profileSchema = z.object({
     id: z.number(),
     name: z.string().trim().min(1).max(255),
@@ -187,7 +192,7 @@ export const updateProfile = async (req, res) => {
       "user_follows.count AS following_count"
     )
     .from("profiles_profile")
-    .innerJoin("auth_user", "profiles_profile.id", "auth_user.id")
+    .innerJoin("auth_user", "profiles_profile.owner_id", "auth_user.id")
     .leftOuterJoin(
       function () {
         this.select("posts_post.owner_id")
@@ -197,7 +202,7 @@ export const updateProfile = async (req, res) => {
           .as("user_posts");
       },
       "user_posts.owner_id",
-      "profiles_profile.owner_id"
+      "profiles_profile.id"
     )
     .leftOuterJoin(
       function () {
@@ -208,7 +213,7 @@ export const updateProfile = async (req, res) => {
           .as("user_followers");
       },
       "user_followers.followed_id",
-      "profiles_profile.owner_id"
+      "profiles_profile.id"
     )
     .leftOuterJoin(
       function () {
@@ -219,27 +224,29 @@ export const updateProfile = async (req, res) => {
           .as("user_follows");
       },
       "user_follows.owner_id",
-      "profiles_profile.owner_id"
+      "profiles_profile.id"
     )
     .where("profiles_profile.id", updatedProfile[0].id);
 
   const profileResponse = await query;
 
-  res.send(await updateProfileMapper(profileResponse[0]));
+  res.send(
+    await updateProfileMapper(profileResponse[0], currentlyLoggedInUser)
+  );
 };
 
 // UPDATE PROFILE MAPPER
-const updateProfileMapper = async (profileResponse) => {
+const updateProfileMapper = async (profileResponse, currentlyLoggedInUser) => {
   const profileImage = await getCloudinaryImage(profileResponse.image);
 
   const profile = {
     id: profileResponse.id,
     owner: profileResponse.profile_owner,
-    // is_owner: true, // TEMP HARD-CODED - NOT NECESSARY?
+    is_owner: currentlyLoggedInUser === profile.id,
     name: profileResponse.name,
     content: profileResponse.content,
     image: profileImage,
-    // following_id: null, - NOT NECESSARY FOR EDIT?
+    following_id: profile.following_id,
     posts_count: profileResponse.posts_count,
     followers_count: profileResponse.followers_count,
     following_count: profileResponse.following_count,

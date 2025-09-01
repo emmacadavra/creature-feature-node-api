@@ -85,8 +85,8 @@ const buildQuery = (
 
   query
     .from("posts_post")
-    .innerJoin("auth_user", "posts_post.owner_id", "auth_user.id")
     .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
+    .innerJoin("auth_user", "profiles_profile.owner_id", "auth_user.id")
     .leftOuterJoin(
       function () {
         this.select("reactions_reaction.post_id")
@@ -142,7 +142,7 @@ const buildQuery = (
         this.andOn(
           klient.raw(
             "reactions_reaction.owner_id = ?",
-            `${Number(currentlyLoggedInUser)}`
+            `${currentlyLoggedInUser}`
           )
         );
       });
@@ -222,7 +222,7 @@ const postsMapper = async (posts, currentlyLoggedInUser) => {
     postsArray.push({
       id: post.id,
       owner: post.post_owner,
-      is_owner: Number(currentlyLoggedInUser) === post.profile_id,
+      is_owner: currentlyLoggedInUser === post.profile_id,
       profile_id: post.profile_id,
       profile_image: profileImage,
       title: post.title,
@@ -251,6 +251,7 @@ export const createPost = async (req, res) => {
   if (!req.user) {
     return res.sendStatus(401);
   }
+  const currentlyLoggedInUser = req.user.id;
 
   const postSchema = z.object({
     title: z.string().trim().min(1).max(255),
@@ -275,7 +276,7 @@ export const createPost = async (req, res) => {
     image_filter: "normal",
     created_on: new Date(),
     updated_on: new Date(),
-    owner_id: req.user.id,
+    owner_id: currentlyLoggedInUser,
     category: req.body.category,
     status: "published",
     // excerpt: null // REDUNDANT
@@ -295,11 +296,13 @@ export const createPost = async (req, res) => {
       "profiles_profile.image AS profile_image"
     )
     .from("posts_post")
-    .innerJoin("auth_user", "posts_post.owner_id", "auth_user.id")
     .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
+    .innerJoin("auth_user", "profiles_profile.owner_id", "auth_user.id")
     .where("posts_post.id", insertResponse[0].id);
 
-  res.send(await createUpdatePostMapper(postResponse[0], req.user.id));
+  res.send(
+    await createUpdatePostMapper(postResponse[0], currentlyLoggedInUser)
+  );
 };
 
 // CREATE/UPDATE POSTS MAPPER
@@ -311,7 +314,7 @@ const createUpdatePostMapper = async (postResponse, currentlyLoggedInUser) => {
   const post = {
     id: postResponse.id,
     owner: postResponse.post_owner,
-    is_owner: Number(currentlyLoggedInUser) === postResponse.profile_id,
+    is_owner: currentlyLoggedInUser === postResponse.profile_id,
     profile_id: postResponse.profile_id,
     profile_image: profileImage,
     title: postResponse.title,
@@ -330,6 +333,11 @@ const createUpdatePostMapper = async (postResponse, currentlyLoggedInUser) => {
 
 // UPDATE POST
 export const updatePost = async (req, res) => {
+  if (!req.user) {
+    return res.sendStatus(401);
+  }
+  const currentlyLoggedInUser = req.user.id;
+
   const postSchema = z.object({
     id: z.number(),
     title: z.string().trim().min(1).max(255),
@@ -349,7 +357,7 @@ export const updatePost = async (req, res) => {
     title: req.body.title,
     content: req.body.content,
     updated_on: new Date(),
-    owner_id: req.user.id,
+    owner_id: currentlyLoggedInUser,
     category: req.body.category,
   };
 
@@ -371,11 +379,13 @@ export const updatePost = async (req, res) => {
       "profiles_profile.image AS profile_image"
     )
     .from("posts_post")
-    .innerJoin("auth_user", "posts_post.owner_id", "auth_user.id")
     .innerJoin("profiles_profile", "posts_post.owner_id", "profiles_profile.id")
+    .innerJoin("auth_user", "profiles_profile.owner_id", "auth_user.id")
     .where("posts_post.id", updatedPost[0].id);
 
-  res.send(await createUpdatePostMapper(postResponse[0], req.user.id));
+  res.send(
+    await createUpdatePostMapper(postResponse[0], currentlyLoggedInUser)
+  );
 };
 
 // DELETE POST

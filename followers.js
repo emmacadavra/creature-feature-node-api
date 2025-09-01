@@ -3,6 +3,11 @@ import * as z from "zod/v4";
 
 // CREATE FOLLOW
 export const createFollow = async (req, res) => {
+  if (!req.user) {
+    return res.sendStatus(401);
+  }
+  const currentlyLoggedInUser = req.user.id;
+
   const followSchema = z.object({
     owner_id: z.number(),
     followed_id: z.number(),
@@ -10,7 +15,7 @@ export const createFollow = async (req, res) => {
   });
 
   const followData = {
-    owner_id: req.body.owner,
+    owner_id: currentlyLoggedInUser,
     followed_id: req.body.followed,
     created_on: new Date(),
   };
@@ -30,25 +35,35 @@ export const createFollow = async (req, res) => {
     )
     .from("followers_follower")
     .leftOuterJoin(
-      "auth_user AS auth_owner",
+      "profiles_profile AS owner_profile",
       "followers_follower.owner_id",
+      "owner_profile.id"
+    )
+    .leftOuterJoin(
+      "auth_user AS auth_owner",
+      "owner_profile.owner_id",
       "auth_owner.id"
     )
     .leftOuterJoin(
-      "auth_user AS auth_followed",
+      "profiles_profile AS followed_profile",
       "followers_follower.followed_id",
+      "followed_profile.id"
+    )
+    .leftOuterJoin(
+      "auth_user AS auth_followed",
+      "followed_profile.owner_id",
       "auth_followed.id"
     )
     .where("followers_follower.id", insertResponse[0].id);
 
-  res.send(await createFollowMapper(followResponse[0]));
+  res.send(await createFollowMapper(followResponse[0], currentlyLoggedInUser));
 };
 
 // CREATE FOLLOW MAPPER
-const createFollowMapper = async (followResponse) => {
+const createFollowMapper = async (followResponse, currentlyLoggedInUser) => {
   const follow = {
     id: followResponse.id,
-    owner_id: followResponse.owner_id,
+    owner_id: currentlyLoggedInUser,
     owner_name: followResponse.owner_name,
     followed_id: followResponse.followed_id,
     followed_name: followResponse.followed_name,

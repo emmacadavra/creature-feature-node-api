@@ -4,7 +4,6 @@ import * as z from "zod/v4";
 
 // GET COMMENTS
 export const getComments = async (req, res) => {
-  console.log("Cookies: ", req.cookies);
   if (!req.query.post) {
     throw new Error("Post ID must be provided!");
   }
@@ -40,9 +39,9 @@ const buildQuery = (queryType, postId, { currentlyLoggedInUser }) => {
   if (queryType === "commentsQuery") {
     query = klient.select(
       "comments_comment.*",
-      "auth_user.username AS comment_owner",
-      "profiles_profile.owner_id AS profile_id",
+      "profiles_profile.id AS profile_id",
       "profiles_profile.image AS profile_image",
+      "auth_user.username AS comment_owner",
       "comment_likes.count AS likes_count"
     );
   }
@@ -57,12 +56,12 @@ const buildQuery = (queryType, postId, { currentlyLoggedInUser }) => {
 
   query
     .from("comments_comment")
-    .innerJoin("auth_user", "comments_comment.owner_id", "auth_user.id")
     .innerJoin(
       "profiles_profile",
       "comments_comment.owner_id",
-      "profiles_profile.owner_id"
+      "profiles_profile.id"
     )
+    .innerJoin("auth_user", "profiles_profile.owner_id", "auth_user.id")
     .leftOuterJoin(
       function () {
         this.select("like_comments_likecomment.comment_id")
@@ -87,7 +86,7 @@ const buildQuery = (queryType, postId, { currentlyLoggedInUser }) => {
         this.andOn(
           klient.raw(
             "like_comments_likecomment.owner_id = ?",
-            `${Number(currentlyLoggedInUser)}`
+            `${currentlyLoggedInUser}`
           )
         );
       });
@@ -119,7 +118,7 @@ const commentsMapper = async (comments, currentlyLoggedInUser) => {
     commentsArray.push({
       id: comment.id,
       owner: comment.comment_owner,
-      is_owner: Number(currentlyLoggedInUser) === comment.profile_id,
+      is_owner: currentlyLoggedInUser === comment.profile_id,
       profile_id: comment.profile_id,
       profile_image: profileImage,
       like_id: like_id,
@@ -135,6 +134,11 @@ const commentsMapper = async (comments, currentlyLoggedInUser) => {
 };
 
 export const createComment = async (req, res) => {
+  if (!req.user) {
+    return res.sendStatus(401);
+  }
+  const currentlyLoggedInUser = req.user.id;
+
   const commentSchema = z.object({
     content: z.string(),
     post_id: z.number(),
@@ -146,7 +150,7 @@ export const createComment = async (req, res) => {
   const commentData = {
     content: req.body.content,
     post_id: req.body.post,
-    owner_id: req.body.owner,
+    owner_id: currentlyLoggedInUser,
     created_on: new Date(),
     updated_on: new Date(),
   };
@@ -161,30 +165,35 @@ export const createComment = async (req, res) => {
   const commentResponse = await klient
     .select(
       "comments_comment.*",
-      "auth_user.username AS comment_owner",
-      "profiles_profile.owner_id AS profile_id",
-      "profiles_profile.image AS profile_image"
+      "profiles_profile.id AS profile_id",
+      "profiles_profile.image AS profile_image",
+      "auth_user.username AS comment_owner"
     )
     .from("comments_comment")
-    .innerJoin("auth_user", "comments_comment.owner_id", "auth_user.id")
     .innerJoin(
       "profiles_profile",
       "comments_comment.owner_id",
-      "profiles_profile.owner_id"
+      "profiles_profile.id"
     )
+    .innerJoin("auth_user", "profiles_profile.owner_id", "auth_user.id")
     .where("comments_comment.id", insertResponse[0].id);
 
-  res.send(await createUpdateCommentMapper(commentResponse[0]));
+  res.send(
+    await createUpdateCommentMapper(commentResponse[0], currentlyLoggedInUser)
+  );
 };
 
 // CREATE/UPDATE COMMENTS MAPPER
-const createUpdateCommentMapper = async (commentResponse) => {
+const createUpdateCommentMapper = async (
+  commentResponse,
+  currentlyLoggedInUser
+) => {
   const profileImage = await getCloudinaryImage(commentResponse.profile_image);
 
   const comment = {
     id: commentResponse.id,
     owner: commentResponse.comment_owner,
-    is_owner: commentResponse.owner_id === commentResponse.profile_id,
+    is_owner: currentlyLoggedInUser === commentResponse.profile_id,
     profile_id: commentResponse.profile_id,
     profile_image: profileImage,
     like_id: null, // TEMP HARD-CODED - CURRENT USER COMMENT LIKE ID
@@ -199,6 +208,11 @@ const createUpdateCommentMapper = async (commentResponse) => {
 
 // UPDATE COMMENT
 export const updateComment = async (req, res) => {
+  if (!req.user) {
+    return res.sendStatus(401);
+  }
+  const currentlyLoggedInUser = req.user.id;
+
   const commentSchema = z.object({
     id: z.number(),
     content: z.string(),
@@ -209,7 +223,7 @@ export const updateComment = async (req, res) => {
   const commentData = {
     id: Number(req.params.id),
     content: req.body.content,
-    owner_id: req.body.owner,
+    owner_id: currentlyLoggedInUser,
     updated_on: new Date(),
   };
 
@@ -222,20 +236,22 @@ export const updateComment = async (req, res) => {
   const commentResponse = await klient
     .select(
       "comments_comment.*",
-      "auth_user.username AS comment_owner",
-      "profiles_profile.owner_id AS profile_id",
-      "profiles_profile.image AS profile_image"
+      "profiles_profile.id AS profile_id",
+      "profiles_profile.image AS profile_image",
+      "auth_user.username AS comment_owner"
     )
     .from("comments_comment")
-    .innerJoin("auth_user", "comments_comment.owner_id", "auth_user.id")
     .innerJoin(
       "profiles_profile",
       "comments_comment.owner_id",
-      "profiles_profile.owner_id"
+      "profiles_profile.id"
     )
+    .innerJoin("auth_user", "profiles_profile.owner_id", "auth_user.id")
     .where("comments_comment.id", updatedComment[0].id);
 
-  res.send(await createUpdateCommentMapper(commentResponse[0]));
+  res.send(
+    await createUpdateCommentMapper(commentResponse[0], currentlyLoggedInUser)
+  );
 };
 
 // DELETE COMMENT

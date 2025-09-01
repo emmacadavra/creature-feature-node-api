@@ -3,6 +3,11 @@ import * as z from "zod/v4";
 
 // CREATE LIKE
 export const createLike = async (req, res) => {
+  if (!req.user) {
+    return res.sendStatus(401);
+  }
+  const currentlyLoggedInUser = req.user.id;
+
   const likeSchema = z.object({
     comment_id: z.number(),
     owner_id: z.number(),
@@ -11,7 +16,7 @@ export const createLike = async (req, res) => {
 
   const likeData = {
     comment_id: req.body.comment,
-    owner_id: req.body.owner,
+    owner_id: currentlyLoggedInUser,
     created_on: new Date(),
   };
 
