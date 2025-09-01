@@ -3,7 +3,7 @@ import cors from "cors";
 import { types } from "pg";
 import knex from "knex";
 import { uploadFile, uploadImage } from "./image-upload.js";
-import { login, user, sessions } from "./auth.js";
+import { login, user, sessions, register } from "./auth.js";
 import { createPost, deletePost, updatePost, getPosts } from "./posts.js";
 import { createReaction, deleteReaction, updateReaction } from "./reactions.js";
 import {
@@ -37,7 +37,6 @@ app.use(
 
 app.use((req, res, next) => {
   const authToken = req.cookies["auth_token"];
-  // console.log("authToken", authToken);
   req.user = sessions[authToken] ?? null;
   next();
 });
@@ -62,13 +61,13 @@ app.get("/", (req, res) => {
 // UPLOAD IMAGE - POSTS / PROFILES (POST)
 app.post("/image-upload", uploadFile, uploadImage);
 
-// POSTS ROUTES?
+// USER REGISTRATION (POST)
+app.post("/register", register);
 
-// app.route("/posts").get(getPosts).post(createPost);
-// app.route("/posts/:id").patch(editPost).delete(deletePost);
-
+// USER LOG IN (POST)
 app.post("/login", login);
 
+// USERS (GET)
 app.get("/user", user);
 
 // POSTS (GET)
