@@ -242,11 +242,11 @@ const updateProfileMapper = async (profileResponse, currentlyLoggedInUser) => {
   const profile = {
     id: profileResponse.id,
     owner: profileResponse.profile_owner,
-    is_owner: currentlyLoggedInUser === profile.id,
+    is_owner: currentlyLoggedInUser === profileResponse.id,
     name: profileResponse.name,
     content: profileResponse.content,
     image: profileImage,
-    following_id: profile.following_id,
+    following_id: profileResponse.following_id,
     posts_count: profileResponse.posts_count,
     followers_count: profileResponse.followers_count,
     following_count: profileResponse.following_count,

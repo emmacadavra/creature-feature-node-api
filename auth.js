@@ -12,7 +12,6 @@ const passwordSalt = process.env.PASSWORD_SALT;
 const hashPassword = (password) => {
   const saltedPassword = passwordSalt.replace("{PASSWORD}", password);
   const hashedPassword = createHash("md5").update(saltedPassword).digest("hex");
-  console.log(hashedPassword);
   return hashedPassword;
 };
 
@@ -128,7 +127,6 @@ export const register = async (req, res) => {
     validatedData = await registrationSchema.parseAsync(req.body);
 
     const hashedPassword = hashPassword(validatedData.password1);
-    console.log(hashedPassword);
 
     const insertUser = await klient("auth_user").insert(
       {
