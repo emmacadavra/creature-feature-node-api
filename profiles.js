@@ -11,6 +11,8 @@ export const getProfiles = async (req, res) => {
     profilePageId: req.params.id,
   });
 
+  // console.log("profiles", profiles);
+
   const profilesCount = await buildQuery("countQuery", {
     currentlyLoggedInUser: currentlyLoggedInUser,
     profilePageId: req.params.id,
@@ -102,9 +104,9 @@ const buildQuery = (queryType, { currentlyLoggedInUser, profilePageId }) => {
     query.where("profiles_profile.id", profileId);
   }
 
-  if (queryType === "profilesQuery") {
-    query.orderBy("followers_count", "desc");
-  }
+  // if (queryType === "profilesQuery") {
+  //   query.orderBy("followers_count", "desc");
+  // }
 
   return query;
 };
@@ -147,6 +149,13 @@ const profilesMapper = async (profiles, currentlyLoggedInUser) => {
       updated_on: profile.updated_on,
     });
   }
+
+  [...profilesArray]
+    .sort((a, b) => b.followers_count - a.followers_count)
+    .slice(0, 10)
+    .forEach((profile) => {
+      profile.popular = true;
+    });
 
   return profilesArray;
 };
