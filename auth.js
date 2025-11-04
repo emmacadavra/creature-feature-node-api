@@ -185,3 +185,11 @@ export const register = async (req, res) => {
 
   res.send(validatedData);
 };
+
+// LOG OUT
+export const logout = async (req, res) => {
+  const authToken = req.cookies["auth_token"];
+  delete sessions[authToken];
+
+  res.sendStatus(200);
+};

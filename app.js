@@ -3,7 +3,7 @@ import cors from "cors";
 import { types } from "pg";
 import knex from "knex";
 import { uploadFile, uploadImage } from "./image-upload.js";
-import { login, user, sessions, register } from "./auth.js";
+import { login, user, sessions, register, logout } from "./auth.js";
 import { createPost, deletePost, updatePost, getPosts } from "./posts.js";
 import { createReaction, deleteReaction, updateReaction } from "./reactions.js";
 import {
@@ -66,6 +66,9 @@ app.post("/register", register);
 
 // USER LOG IN (POST)
 app.post("/login", login);
+
+//USER LOG OUT (POST)
+app.post("/logout", logout);
 
 // USERS (GET)
 app.get("/user", user);
